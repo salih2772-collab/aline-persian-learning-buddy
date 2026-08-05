@@ -119,7 +119,8 @@ function makeLesson(s: SessionSettings): LessonContent {
 
 export function generateContent(settings: SessionSettings, mood: Mood) {
   if (settings.contentType === "story") {
-    const story = STORIES[mood === "sad" || mood === "angry" ? 0 : Math.floor(Math.random() * STORIES.length)];
+    const idx = mood === "sad" || mood === "angry" ? 0 : Math.floor(Math.random() * STORIES.length);
+    const story = STORIES[idx] ?? STORIES[0]!;
     return [
       `📖 داستان امروز: «${story.title}»\n\n${story.body}`,
       `✨ پیام داستان: ${story.moral}`,
