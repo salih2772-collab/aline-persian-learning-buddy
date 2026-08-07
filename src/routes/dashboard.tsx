@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -11,7 +15,15 @@ import {
   YAxis,
 } from "recharts";
 import { AlineHeader } from "@/components/aline-header";
-import { MOOD_DISTRIBUTION, RECENT_SESSIONS, WEEKLY_ACTIVITY } from "@/lib/aline";
+import {
+  MOOD_DISTRIBUTION,
+  RECENT_SESSIONS,
+  WEEKLY_ACTIVITY,
+  formatFaDate,
+  loadQuizResults,
+  toFa,
+  type QuizResult,
+} from "@/lib/aline";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
