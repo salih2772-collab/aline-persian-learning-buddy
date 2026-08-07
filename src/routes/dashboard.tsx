@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { AlineHeader } from "@/components/aline-header";
 import {
+  MOODS,
   MOOD_DISTRIBUTION,
   RECENT_SESSIONS,
   WEEKLY_ACTIVITY,
