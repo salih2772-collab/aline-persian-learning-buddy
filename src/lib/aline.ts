@@ -117,22 +117,148 @@ function makeLesson(s: SessionSettings): LessonContent {
   };
 }
 
-export function generateContent(settings: SessionSettings, mood: Mood) {
+export type QuizQuestion = {
+  question: string;
+  options: string[];
+  correct: number; // index in options
+};
+
+export type GeneratedContent = {
+  messages: string[];
+  quiz: QuizQuestion[];
+  topic: string;
+  type: "داستان" | "درس";
+};
+
+const STORY_QUIZZES: QuizQuestion[][] = [
+  [
+    {
+      question: "چرا گنجشک گرسنه ماند؟",
+      options: ["چون دانه‌هایش تمام شد", "چون لانه‌اش خراب شد", "چون خوابش می‌آمد"],
+      correct: 0,
+    },
+    {
+      question: "کبوتر چه کار کرد؟",
+      options: ["پرواز کرد و رفت", "نصف دانه‌هایش را به گنجشک داد", "همهٔ دانه‌ها را خورد"],
+      correct: 1,
+    },
+    {
+      question: "پیام داستان چیست؟",
+      options: ["تنها بودن بهتر است", "باید همیشه بدویم", "قسمت‌کردن دل ما را بزرگ‌تر می‌کند"],
+      correct: 2,
+    },
+  ],
+  [
+    {
+      question: "علی چه چیزی را شکست؟",
+      options: ["شیشهٔ پنجره", "یک گلدان", "توپ همسایه"],
+      correct: 1,
+    },
+    {
+      question: "علی اول می‌خواست چه بگوید؟",
+      options: ["بگوید کار باد بوده", "بگوید خودش شکسته", "چیزی نگوید"],
+      correct: 0,
+    },
+    {
+      question: "چرا مادر خوشحال شد؟",
+      options: ["چون گلدان گران نبود", "چون علی راست گفت", "چون علی توپ داشت"],
+      correct: 1,
+    },
+  ],
+];
+
+function makeLessonQuiz(s: SessionSettings): QuizQuestion[] {
+  return [
+    {
+      question: `امروز کدام کتاب را مرور کردیم؟`,
+      options: [s.book, "ریاضی پنجم دبستان", "ورزش و سلامت"],
+      correct: 0,
+    },
+    {
+      question: `درس امروز از کدام فصل بود؟`,
+      options: ["فصل ۹", `فصل ${s.chapter}`, "فصل آخر کتاب"],
+      correct: 1,
+    },
+    {
+      question: "برای فهمیدن بهتر متن، اول چه کار می‌کنیم؟",
+      options: ["سریع ورق می‌زنیم", "فقط عکس‌ها را نگاه می‌کنیم", "با دقت و شمرده می‌خوانیم"],
+      correct: 2,
+    },
+  ];
+}
+
+export function generateContent(settings: SessionSettings, mood: Mood): GeneratedContent {
   if (settings.contentType === "story") {
     const idx = mood === "sad" || mood === "angry" ? 0 : Math.floor(Math.random() * STORIES.length);
     const story = STORIES[idx] ?? STORIES[0]!;
-    return [
-      `📖 داستان امروز: «${story.title}»\n\n${story.body}`,
-      `✨ پیام داستان: ${story.moral}`,
-      `حالا چند سؤال کوچک:\n۱) ${story.questions[0]}\n۲) ${story.questions[1]}\n۳) ${story.questions[2]}`,
-    ];
+    return {
+      type: "داستان",
+      topic: story.title,
+      quiz: STORY_QUIZZES[idx] ?? STORY_QUIZZES[0]!,
+      messages: [
+        `📖 داستان امروز: «${story.title}»\n\n${story.body}`,
+        `✨ پیام داستان: ${story.moral}`,
+        `حالا چند سؤال کوچک:\n۱) ${story.questions[0]}\n۲) ${story.questions[1]}\n۳) ${story.questions[2]}`,
+      ],
+    };
   }
   const lesson = makeLesson(settings);
-  return [
-    `📚 ${lesson.title}\n\n${lesson.summary}`,
-    `نکته‌های مهم:\n• ${lesson.keyPoints.join("\n• ")}`,
-    `سؤال‌های درسی:\n۱) ${lesson.questions[0]}\n۲) ${lesson.questions[1]}\n۳) ${lesson.questions[2]}`,
-  ];
+  return {
+    type: "درس",
+    topic: lesson.title,
+    quiz: makeLessonQuiz(settings),
+    messages: [
+      `📚 ${lesson.title}\n\n${lesson.summary}`,
+      `نکته‌های مهم:\n• ${lesson.keyPoints.join("\n• ")}`,
+      `سؤال‌های درسی:\n۱) ${lesson.questions[0]}\n۲) ${lesson.questions[1]}\n۳) ${lesson.questions[2]}`,
+    ],
+  };
+}
+
+// ---- Quiz results storage ---------------------------------------------------
+
+export type QuizResult = {
+  id: number;
+  at: number; // timestamp
+  topic: string;
+  type: "داستان" | "درس";
+  correct: number;
+  total: number;
+  score: number; // percent
+  mood: Mood;
+};
+
+const QUIZ_KEY = "aline.quiz";
+
+export function loadQuizResults(): QuizResult[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(QUIZ_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? (parsed as QuizResult[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveQuizResult(result: Omit<QuizResult, "id" | "at">) {
+  if (typeof window === "undefined") return;
+  const all = loadQuizResults();
+  all.push({ ...result, id: Date.now(), at: Date.now() });
+  window.localStorage.setItem(QUIZ_KEY, JSON.stringify(all.slice(-50)));
+}
+
+const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+export function toFa(n: number | string) {
+  return String(n).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)]!);
+}
+
+export function formatFaDate(ts: number) {
+  try {
+    return new Intl.DateTimeFormat("fa-IR", { month: "long", day: "numeric" }).format(new Date(ts));
+  } catch {
+    return "";
+  }
 }
 
 export const FALLBACK_REPLIES = [

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
+import { QuizCard } from "@/components/quiz-card";
 import {
   DEFAULT_SETTINGS,
   FALLBACK_REPLIES,
@@ -9,6 +10,8 @@ import {
   MOOD_REPLIES,
   generateContent,
   loadSettings,
+  saveQuizResult,
+  type GeneratedContent,
   type Mood,
   type SessionSettings,
 } from "@/lib/aline";
@@ -29,7 +32,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 type Msg = { id: number; from: "aline" | "child"; text: string };
-type Stage = "greeting" | "mood" | "content";
+type Stage = "greeting" | "mood" | "content" | "quiz" | "free";
 
 let msgId = 0;
 const nextId = () => ++msgId;
@@ -40,6 +43,7 @@ function ChatPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [thinking, setThinking] = useState(false);
   const [input, setInput] = useState("");
+  const [pending, setPending] = useState<{ content: GeneratedContent; mood: Mood } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,7 +82,25 @@ function ChatPage() {
     const m = MOODS.find((x) => x.id === mood)!;
     push("child", `${m.emoji} ${m.label}`);
     setStage("content");
-    await alineSays([MOOD_REPLIES[mood], ...generateContent(settings, mood)], 1100);
+    const content = generateContent(settings, mood);
+    setPending({ content, mood });
+    await alineSays([MOOD_REPLIES[mood], ...content.messages], 1100);
+    await alineSays(["حالا یک آزمون کوچولوی چندگزینه‌ای داریم. آماده‌ای؟ ✏️"], 800);
+    setStage("quiz");
+  }
+
+  function finishQuiz(correct: number, total: number) {
+    if (pending) {
+      saveQuizResult({
+        topic: pending.content.topic,
+        type: pending.content.type,
+        correct,
+        total,
+        score: Math.round((correct / total) * 100),
+        mood: pending.mood,
+      });
+    }
+    setStage("free");
   }
 
   async function sendFree(e: React.FormEvent) {
@@ -147,7 +169,13 @@ function ChatPage() {
           </div>
         ) : null}
 
-        {stage === "content" ? (
+        {stage === "quiz" && pending && !thinking ? (
+          <div className="mt-4">
+            <QuizCard questions={pending.content.quiz} onFinish={finishQuiz} />
+          </div>
+        ) : null}
+
+        {stage === "content" || stage === "free" ? (
           <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
             <input
               value={input}

@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -11,7 +15,16 @@ import {
   YAxis,
 } from "recharts";
 import { AlineHeader } from "@/components/aline-header";
-import { MOOD_DISTRIBUTION, RECENT_SESSIONS, WEEKLY_ACTIVITY } from "@/lib/aline";
+import {
+  MOODS,
+  MOOD_DISTRIBUTION,
+  RECENT_SESSIONS,
+  WEEKLY_ACTIVITY,
+  formatFaDate,
+  loadQuizResults,
+  toFa,
+  type QuizResult,
+} from "@/lib/aline";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -37,9 +50,33 @@ const PIE_COLORS = [
 ];
 
 function DashboardPage() {
+  const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
+
+  useEffect(() => {
+    setQuizzes(loadQuizResults());
+  }, []);
+
   const totalMinutes = WEEKLY_ACTIVITY.reduce((a, d) => a + d.minutes, 0);
   const totalSessions = WEEKLY_ACTIVITY.reduce((a, d) => a + d.sessions, 0);
-  const avgScore = Math.round(RECENT_SESSIONS.reduce((a, s) => a + s.score, 0) / RECENT_SESSIONS.length);
+
+  const scoreSource = quizzes.length > 0 ? quizzes.map((q) => q.score) : RECENT_SESSIONS.map((s) => s.score);
+  const avgScore = Math.round(scoreSource.reduce((a, s) => a + s, 0) / scoreSource.length);
+
+  const trend = quizzes.slice(-8).map((q, i) => ({
+    label: `${toFa(i + 1)}`,
+    score: q.score,
+  }));
+
+  const realSessions = [...quizzes].reverse().map((q) => ({
+    id: `q-${q.id}`,
+    date: formatFaDate(q.at),
+    type: q.type,
+    topic: q.topic,
+    mood: MOODS.find((m) => m.id === q.mood)?.emoji ?? "🙂",
+    score: q.score,
+  }));
+  const mockSessions = RECENT_SESSIONS.map((s) => ({ ...s, id: `m-${s.id}` }));
+  const sessions = [...realSessions, ...mockSessions].slice(0, 8);
 
   return (
     <div className="min-h-screen pb-16">
@@ -49,11 +86,12 @@ function DashboardPage() {
         <p className="mt-2 text-sm text-muted-foreground">خلاصه‌ای از جلسه‌های کودک با الین.</p>
 
         <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="دقیقهٔ یادگیری" value={`${totalMinutes}`} emoji="⏱️" />
-          <Stat label="تعداد جلسه" value={`${totalSessions}`} emoji="💬" />
-          <Stat label="میانگین پاسخ" value={`${avgScore}٪`} emoji="⭐" />
-          <Stat label="روزهای پیوسته" value="۷" emoji="🔥" />
+          <Stat label="دقیقهٔ یادگیری" value={toFa(totalMinutes)} emoji="⏱️" />
+          <Stat label="تعداد جلسه" value={toFa(totalSessions)} emoji="💬" />
+          <Stat label="میانگین نمرهٔ آزمون" value={`${toFa(avgScore)}٪`} emoji="⭐" />
+          <Stat label="تعداد آزمون" value={toFa(quizzes.length)} emoji="📝" />
         </section>
+
 
         <section className="card-soft mt-5 p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-black">فعالیت هفتگی (دقیقه)</h2>
@@ -128,10 +166,55 @@ function DashboardPage() {
           </div>
         </section>
 
+        {quizzes.length > 0 ? (
+          <section className="card-soft mt-5 p-4 sm:p-6">
+            <h2 className="mb-4 text-lg font-black">روند نمرهٔ آزمون‌ها</h2>
+            <div className="h-56 w-full" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    reversed
+                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    orientation="right"
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={32}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 14,
+                      border: "1px solid var(--color-border)",
+                      background: "var(--color-card)",
+                      fontFamily: "Vazirmatn, sans-serif",
+                      direction: "rtl",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    name="نمره"
+                    stroke="var(--color-chart-2)"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        ) : null}
+
         <section className="card-soft mt-5 p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-black">جلسه‌های اخیر</h2>
           <ul className="grid gap-3">
-            {RECENT_SESSIONS.map((s) => (
+            {sessions.map((s) => (
               <li
                 key={s.id}
                 className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-secondary/60 p-3"
@@ -144,7 +227,7 @@ function DashboardPage() {
                   </span>
                 </span>
                 <span className="shrink-0 rounded-full bg-success/15 px-3 py-1 text-xs font-black text-success">
-                  {s.score}٪
+                  {toFa(s.score)}٪
                 </span>
               </li>
             ))}
