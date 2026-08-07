@@ -169,7 +169,13 @@ function ChatPage() {
           </div>
         ) : null}
 
-        {stage === "content" ? (
+        {stage === "quiz" && pending && !thinking ? (
+          <div className="mt-4">
+            <QuizCard questions={pending.content.quiz} onFinish={finishQuiz} />
+          </div>
+        ) : null}
+
+        {stage === "content" || stage === "free" ? (
           <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
             <input
               value={input}
