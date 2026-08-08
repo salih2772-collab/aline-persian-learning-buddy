@@ -14,7 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      book_pages: {
+        Row: {
+          book: string
+          chapter: string
+          content: string
+          created_at: string
+          id: string
+          page: string
+        }
+        Insert: {
+          book: string
+          chapter: string
+          content?: string
+          created_at?: string
+          id?: string
+          page: string
+        }
+        Update: {
+          book?: string
+          chapter?: string
+          content?: string
+          created_at?: string
+          id?: string
+          page?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          created_at: string
+          id: string
+          phase: string
+          sender: string
+          session_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phase?: string
+          sender: string
+          session_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phase?: string
+          sender?: string
+          session_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          book: string | null
+          chapter: string | null
+          content_type: string
+          created_at: string
+          id: string
+          mood_reason: string | null
+          mood_sticker: string | null
+          moral_topic: string | null
+          page: string | null
+          status: string
+          student_name: string
+        }
+        Insert: {
+          book?: string | null
+          chapter?: string | null
+          content_type?: string
+          created_at?: string
+          id?: string
+          mood_reason?: string | null
+          mood_sticker?: string | null
+          moral_topic?: string | null
+          page?: string | null
+          status?: string
+          student_name?: string
+        }
+        Update: {
+          book?: string | null
+          chapter?: string | null
+          content_type?: string
+          created_at?: string
+          id?: string
+          mood_reason?: string | null
+          mood_sticker?: string | null
+          moral_topic?: string | null
+          page?: string | null
+          status?: string
+          student_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
