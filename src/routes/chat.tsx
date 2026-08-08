@@ -95,13 +95,14 @@ function ChatPage() {
     setError(null);
     let id: string;
     try {
+      const useBook = settings.contentType === "lesson" || settings.useBookInStory;
       const s = await startSession({
         data: {
           student_name: settings.childName,
           content_type: settings.contentType,
-          book: settings.book,
+          book: useBook ? settings.book : null,
           chapter: null,
-          page: settings.contentType === "lesson" ? settings.page : null,
+          page: useBook ? settings.page : null,
           moral_topic: settings.contentType === "story" ? settings.moralTopic : null,
         },
       });
