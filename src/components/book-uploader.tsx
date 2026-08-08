@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { extractBook } from "@/lib/aline.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { BOOKS, toFa } from "@/lib/aline";
+import { BOOKS, toEn, toFa } from "@/lib/aline";
 
 const fieldClass =
   "w-full rounded-xl border border-input bg-card px-4 py-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring";
@@ -11,22 +11,42 @@ const fieldClass =
 export function BookUploader({ book: initialBook }: { book: string }) {
   const [book, setBook] = useState(initialBook);
   const [file, setFile] = useState<File | null>(null);
+  const [offset, setOffset] = useState("0");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [offsets, setOffsets] = useState<Record<string, number>>({});
   const run = useServerFn(extractBook);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from("book_pages").select("book");
+    const [{ data }, { data: bookRows }] = await Promise.all([
+      supabase.from("book_pages").select("book"),
+      supabase.from("books").select("name, page_offset"),
+    ]);
     const next: Record<string, number> = {};
     for (const row of data ?? []) next[row.book] = (next[row.book] ?? 0) + 1;
     setCounts(next);
+    const offs: Record<string, number> = {};
+    for (const row of bookRows ?? []) offs[row.name] = row.page_offset;
+    setOffsets(offs);
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    setOffset(String(offsets[book] ?? 0));
+  }, [book, offsets]);
+
+  async function saveOffset() {
+    const value = Number(toEn(offset)) || 0;
+    const { error: offErr } = await supabase
+      .from("books")
+      .upsert({ name: book, page_offset: value }, { onConflict: "name" });
+    if (offErr) throw new Error(offErr.message);
+  }
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +55,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
     setStatus(null);
     setError(null);
     try {
+      await saveOffset();
       const path = `${Date.now()}-${encodeURIComponent(file.name)}`;
       const { error: upErr } = await supabase.storage.from("textbooks").upload(path, file, {
         contentType: "application/pdf",
@@ -50,6 +71,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
       setBusy(false);
     }
   }
+
 
   return (
     <form onSubmit={upload} className="card-soft mt-6 grid gap-4 p-5 sm:p-7">
@@ -71,6 +93,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
               <span className="font-bold">{b}</span>
               <span className={uploaded ? "font-bold text-success" : "text-muted-foreground"}>
                 {uploaded ? `بارگذاری شده ✓ (${toFa(counts[b] ?? 0)} صفحه)` : "هنوز بارگذاری نشده"}
+                {offsets[b] ? ` — اختلاف صفحه: ${toFa(offsets[b] ?? 0)}` : ""}
               </span>
             </li>
           );
@@ -98,6 +121,20 @@ export function BookUploader({ book: initialBook }: { book: string }) {
         />
       </label>
 
+      <label className="grid gap-2">
+        <span className="text-sm font-bold">اختلاف شماره صفحه</span>
+        <input
+          className={fieldClass}
+          value={offset}
+          onChange={(e) => setOffset(e.target.value)}
+          inputMode="numeric"
+          placeholder="۶"
+        />
+        <span className="text-xs text-muted-foreground">
+          اگر صفحه ۱ کتاب، صفحه ۷ فایل PDF است، اینجا ۶ بنویسید
+        </span>
+      </label>
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
@@ -105,6 +142,24 @@ export function BookUploader({ book: initialBook }: { book: string }) {
           className="rounded-full bg-secondary px-6 py-3 text-sm font-bold text-secondary-foreground disabled:opacity-50"
         >
           {busy ? "در حال پردازش..." : "بارگذاری و استخراج متن"}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setError(null);
+            setStatus(null);
+            try {
+              await saveOffset();
+              await refresh();
+              setStatus("اختلاف شماره صفحه ذخیره شد ✓");
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "ذخیره نشد.");
+            }
+          }}
+          className="rounded-full border border-border px-6 py-3 text-sm font-bold disabled:opacity-50"
+        >
+          ذخیرهٔ اختلاف صفحه
         </button>
         {status ? <span className="text-sm font-bold text-success">{status}</span> : null}
         {error ? <span className="text-sm font-bold text-destructive">{error}</span> : null}

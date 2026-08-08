@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlineHeader } from "@/components/aline-header";
 import { BookUploader } from "@/components/book-uploader";
+import { PagePreview } from "@/components/page-preview";
 import { BOOKS, DEFAULT_SETTINGS, loadSettings, saveSettings, type SessionSettings } from "@/lib/aline";
 
 export const Route = createFileRoute("/settings")({
@@ -119,8 +120,11 @@ function SettingsPage() {
                 onChange={(e) => update("page", e.target.value)}
                 placeholder="۱۴"
               />
+              <span className="text-xs text-muted-foreground">شماره‌ای که روی صفحه کتاب چاپ شده</span>
             </label>
           </div>
+
+          <PagePreview book={form.book} page={form.page} />
 
           <div className="flex flex-wrap items-center gap-3">
             <button

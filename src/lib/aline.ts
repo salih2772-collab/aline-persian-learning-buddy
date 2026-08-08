@@ -255,6 +255,13 @@ export function toFa(n: number | string) {
   return String(n).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)]!);
 }
 
+/** Converts Persian/Arabic digits to plain English digits. */
+export function toEn(value: string) {
+  return String(value)
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+}
+
 export function formatFaDate(ts: number) {
   try {
     return new Intl.DateTimeFormat("fa-IR", { month: "long", day: "numeric" }).format(new Date(ts));
