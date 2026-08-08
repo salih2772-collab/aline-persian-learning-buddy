@@ -99,25 +99,70 @@ function SettingsPage() {
           </fieldset>
 
           {form.contentType === "story" ? (
-            <fieldset className="grid gap-2">
-              <legend className="mb-2 text-sm font-bold">موضوع اخلاقی داستان</legend>
-              <div className="flex flex-wrap gap-2">
-                {MORAL_TOPICS.map((t) => (
-                  <button
-                    type="button"
-                    key={t}
-                    onClick={() => update("moralTopic", t)}
-                    className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                      form.moralTopic === t
-                        ? "border-primary bg-primary/10 font-bold text-primary"
-                        : "border-border bg-card text-muted-foreground hover:bg-secondary"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            <>
+              <fieldset className="grid gap-2">
+                <legend className="mb-2 text-sm font-bold">موضوع اخلاقی داستان</legend>
+                <div className="flex flex-wrap gap-2">
+                  {MORAL_TOPICS.map((t) => (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => update("moralTopic", t)}
+                      className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                        form.moralTopic === t
+                          ? "border-primary bg-primary/10 font-bold text-primary"
+                          : "border-border bg-card text-muted-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]"
+                  checked={form.useBookInStory}
+                  onChange={(e) => update("useBookInStory", e.target.checked)}
+                />
+                <span>
+                  <span className="block text-sm font-bold">آموزش را هم داخل داستان بیاور</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    الین شمارش و جمع (ریاضی) یا کلمه‌های قرآنی همان صفحه را نامحسوس در داستان می‌گنجاند.
+                  </span>
+                </span>
+              </label>
+
+              {form.useBookInStory ? (
+                <>
+                  <label className="grid gap-2">
+                    <span className="text-sm font-bold">کتاب</span>
+                    <select className={fieldClass} value={form.book} onChange={(e) => update("book", e.target.value)}>
+                      {BOOKS.map((b) => (
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="grid gap-2">
+                    <span className="text-sm font-bold">صفحه</span>
+                    <input
+                      className={fieldClass}
+                      value={form.page}
+                      onChange={(e) => update("page", e.target.value)}
+                      placeholder="۱۴"
+                    />
+                    <span className="text-xs text-muted-foreground">شماره‌ای که روی صفحه کتاب چاپ شده</span>
+                  </label>
+
+                  <PagePreview book={form.book} page={form.page} />
+                </>
+              ) : null}
+            </>
           ) : (
             <>
               <label className="grid gap-2">
