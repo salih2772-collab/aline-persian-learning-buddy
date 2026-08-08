@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
 import { QuizCard } from "@/components/quiz-card";
-import { chat, createSession } from "@/lib/aline.functions";
+import { chat, createSession, generateQuiz } from "@/lib/aline.functions";
 import {
   DEFAULT_SETTINGS,
   MOODS,
-  generateContent,
   loadSettings,
   saveQuizResult,
-  type GeneratedContent,
   type Mood,
+  type QuizQuestion,
   type SessionSettings,
 } from "@/lib/aline";
 
