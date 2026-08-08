@@ -3,7 +3,14 @@ import { useEffect, useState } from "react";
 import { AlineHeader } from "@/components/aline-header";
 import { BookUploader } from "@/components/book-uploader";
 import { PagePreview } from "@/components/page-preview";
-import { BOOKS, DEFAULT_SETTINGS, loadSettings, saveSettings, type SessionSettings } from "@/lib/aline";
+import {
+  BOOKS,
+  DEFAULT_SETTINGS,
+  MORAL_TOPICS,
+  loadSettings,
+  saveSettings,
+  type SessionSettings,
+} from "@/lib/aline";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -91,40 +98,53 @@ function SettingsPage() {
             </div>
           </fieldset>
 
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">کتاب</span>
-            <select className={fieldClass} value={form.book} onChange={(e) => update("book", e.target.value)}>
-              {BOOKS.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          </label>
+          {form.contentType === "story" ? (
+            <fieldset className="grid gap-2">
+              <legend className="mb-2 text-sm font-bold">موضوع اخلاقی داستان</legend>
+              <div className="flex flex-wrap gap-2">
+                {MORAL_TOPICS.map((t) => (
+                  <button
+                    type="button"
+                    key={t}
+                    onClick={() => update("moralTopic", t)}
+                    className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                      form.moralTopic === t
+                        ? "border-primary bg-primary/10 font-bold text-primary"
+                        : "border-border bg-card text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          ) : (
+            <>
+              <label className="grid gap-2">
+                <span className="text-sm font-bold">کتاب</span>
+                <select className={fieldClass} value={form.book} onChange={(e) => update("book", e.target.value)}>
+                  {BOOKS.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="grid gap-2">
-              <span className="text-sm font-bold">فصل / درس</span>
-              <input
-                className={fieldClass}
-                value={form.chapter}
-                onChange={(e) => update("chapter", e.target.value)}
-                placeholder="۲"
-              />
-            </label>
-            <label className="grid gap-2">
-              <span className="text-sm font-bold">صفحه</span>
-              <input
-                className={fieldClass}
-                value={form.page}
-                onChange={(e) => update("page", e.target.value)}
-                placeholder="۱۴"
-              />
-              <span className="text-xs text-muted-foreground">شماره‌ای که روی صفحه کتاب چاپ شده</span>
-            </label>
-          </div>
+              <label className="grid gap-2">
+                <span className="text-sm font-bold">صفحه</span>
+                <input
+                  className={fieldClass}
+                  value={form.page}
+                  onChange={(e) => update("page", e.target.value)}
+                  placeholder="۱۴"
+                />
+                <span className="text-xs text-muted-foreground">شماره‌ای که روی صفحه کتاب چاپ شده</span>
+              </label>
 
-          <PagePreview book={form.book} page={form.page} />
+              <PagePreview book={form.book} page={form.page} />
+            </>
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <button
