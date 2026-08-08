@@ -231,7 +231,7 @@ function ChatPage() {
 
         {stage === "quiz" && pending && !thinking ? (
           <div className="mt-4">
-            <QuizCard questions={pending.content.quiz} onFinish={finishQuiz} />
+            <QuizCard questions={pending.questions} onFinish={finishQuiz} />
           </div>
         ) : null}
 
