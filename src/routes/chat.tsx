@@ -138,20 +138,30 @@ function ChatPage() {
       const phase = await talk(sessionId, text, mood, text);
       if (!phase) return;
       setStage("talk");
-      // Next turn moves into the teaching/story phase.
-      setPending({ content: generateContent(settings, mood), mood });
       return;
     }
 
     const phase = await talk(sessionId, text);
-    if (phase === "content" && pending && stage === "talk") setStage("quiz");
+    if (phase === "content" && stage === "talk" && mood) {
+      // Build the quiz from the story/lesson Aline just gave.
+      setThinking(true);
+      try {
+        const quiz = await makeQuiz({ data: { sessionId } });
+        setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood });
+        setStage("quiz");
+      } catch {
+        setStage("free");
+      } finally {
+        setThinking(false);
+      }
+    }
   }
 
   function finishQuiz(correct: number, total: number) {
     if (pending) {
       saveQuizResult({
-        topic: pending.content.topic,
-        type: pending.content.type,
+        topic: pending.topic,
+        type: pending.type,
         correct,
         total,
         score: Math.round((correct / total) * 100),
