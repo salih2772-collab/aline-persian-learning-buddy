@@ -35,7 +35,7 @@ export const chat = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const apiKey = process.env["OPENROUTER_API_KEY"];
     const { createServerSupabase } = await import("./supabase.server");
-    const { buildSystemPrompt, nextPhase, type Phase } = await import("./aline-prompt.server");
+    const { buildSystemPrompt, nextPhase } = await import("./aline-prompt.server");
     const supabase = createServerSupabase();
 
     const { data: session, error: sErr } = await supabase
