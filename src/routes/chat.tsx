@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import alineMascot from "@/assets/aline.png";
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 type Msg = { id: number; from: "aline" | "child"; text: string };
-type Stage = "start" | "mood" | "talk" | "quiz" | "free";
+type Stage = "start" | "mood" | "moodReason" | "talk" | "quiz" | "free";
 
 let msgId = 0;
 const nextId = () => ++msgId;
@@ -46,6 +46,7 @@ function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<{ content: GeneratedContent; mood: Mood } | null>(null);
+  const [mood, setMood] = useState<Mood | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const startSession = useServerFn(createSession);
@@ -63,11 +64,16 @@ function ChatPage() {
     setMessages((m) => [...m, { id: nextId(), from, text }]);
   }
 
-  async function talk(id: string, userMessage: string, moodSticker: string | null = null) {
+  async function talk(
+    id: string,
+    userMessage: string,
+    moodSticker: string | null = null,
+    moodReason: string | null = null,
+  ) {
     setThinking(true);
     setError(null);
     try {
-      const reply = await sendChat({ data: { sessionId: id, userMessage, moodSticker } });
+      const reply = await sendChat({ data: { sessionId: id, userMessage, moodSticker, moodReason } });
       push("aline", [reply.message, reply.question].filter(Boolean).join("\n\n"));
       return reply.phase;
     } catch (e) {
@@ -89,9 +95,9 @@ function ChatPage() {
           student_name: settings.childName,
           content_type: settings.contentType,
           book: settings.book,
-          chapter: settings.chapter,
-          page: settings.page,
-          moral_topic: settings.contentType === "story" ? "مهربانی و راستگویی" : null,
+          chapter: null,
+          page: settings.contentType === "lesson" ? settings.page : null,
+          moral_topic: settings.contentType === "story" ? settings.moralTopic : null,
         },
       });
       id = s.sessionId;
@@ -110,12 +116,10 @@ function ChatPage() {
     if (!sessionId) return;
     const m = MOODS.find((x) => x.id === mood)!;
     push("child", `${m.emoji} ${m.label}`);
-    setStage("talk");
-    const phase = await talk(sessionId, `${m.emoji} ${m.label}`, mood);
-    if (!phase) return;
-    // Next turn moves into the teaching/story phase.
-    const content = generateContent(settings, mood);
-    setPending({ content, mood });
+    setMood(mood);
+    setStage("moodReason");
+    // Always ask the child why they feel this way before moving on.
+    push("aline", `${m.emoji} ممنون که گفتی!\n\nچرا امروز این حس رو داری؟ برام تعریف کن 💛`);
   }
 
   async function sendFree(e: React.FormEvent) {
@@ -124,6 +128,16 @@ function ChatPage() {
     if (!text || thinking || !sessionId) return;
     setInput("");
     push("child", text);
+
+    if (stage === "moodReason" && mood) {
+      const phase = await talk(sessionId, text, mood, text);
+      if (!phase) return;
+      setStage("talk");
+      // Next turn moves into the teaching/story phase.
+      setPending({ content: generateContent(settings, mood), mood });
+      return;
+    }
+
     const phase = await talk(sessionId, text);
     if (phase === "content" && pending && stage === "talk") setStage("quiz");
   }
@@ -164,9 +178,6 @@ function ChatPage() {
               >
                 سلام الین! 👋
               </button>
-              <Link to="/settings" className="text-xs text-muted-foreground underline-offset-4 hover:underline">
-                تنظیمات جلسه را عوض کن
-              </Link>
             </div>
           ) : null}
 
@@ -209,7 +220,7 @@ function ChatPage() {
           </div>
         ) : null}
 
-        {stage === "talk" || stage === "free" ? (
+        {stage === "moodReason" || stage === "talk" || stage === "free" ? (
           <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
             <input
               value={input}

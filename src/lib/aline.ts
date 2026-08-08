@@ -16,17 +16,26 @@ export type SessionSettings = {
   childName: string;
   contentType: ContentType;
   book: string;
-  chapter: string;
   page: string;
+  moralTopic: string;
 };
 
 export const DEFAULT_SETTINGS: SessionSettings = {
   childName: "",
   contentType: "story",
   book: "فارسی سوم دبستان",
-  chapter: "۲",
   page: "۱۴",
+  moralTopic: "مهربانی",
 };
+
+export const MORAL_TOPICS = [
+  "راستگویی",
+  "کمک به دیگران",
+  "شجاعت",
+  "مهربانی",
+  "احترام",
+  "صبر",
+];
 
 export const BOOKS = [
   "فارسی دوم دبستان",
@@ -104,7 +113,7 @@ export type LessonContent = {
 
 function makeLesson(s: SessionSettings): LessonContent {
   return {
-    title: `درس ${s.chapter} — ${s.book}`,
+    title: `${s.book} — صفحهٔ ${s.page}`,
     summary: `امروز صفحهٔ ${s.page} را با هم مرور می‌کنیم. این درس دربارهٔ دقت در خواندن و پیدا کردن پیام اصلی متن است. اول با هم می‌خوانیم، بعد چند سؤال کوتاه می‌پرسم.`,
     keyPoints: [
       "پیام اصلی متن را در یک جمله بگو.",
@@ -177,8 +186,8 @@ function makeLessonQuiz(s: SessionSettings): QuizQuestion[] {
       correct: 0,
     },
     {
-      question: `درس امروز از کدام فصل بود؟`,
-      options: ["فصل ۹", `فصل ${s.chapter}`, "فصل آخر کتاب"],
+      question: `درس امروز از کدام صفحه بود؟`,
+      options: ["صفحهٔ ۹۹", `صفحهٔ ${s.page}`, "صفحهٔ آخر کتاب"],
       correct: 1,
     },
     {

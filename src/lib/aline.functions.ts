@@ -29,6 +29,7 @@ const ChatInput = z.object({
   sessionId: z.string().uuid(),
   userMessage: z.string().default(""),
   moodSticker: z.string().nullable().default(null),
+  moodReason: z.string().nullable().default(null),
 });
 
 export const chat = createServerFn({ method: "POST" })
@@ -56,14 +57,13 @@ export const chat = createServerFn({ method: "POST" })
     const lastAline = [...past].reverse().find((m) => m.sender === "aline");
     const phase: Phase = !lastAline ? "greeting" : nextPhase(lastAline.phase as Phase);
 
-    // Save mood when the child answers the greeting question.
-    if (data.moodSticker && !session.mood_sticker) {
-      await supabase
-        .from("sessions")
-        .update({ mood_sticker: data.moodSticker, mood_reason: data.userMessage || null })
-        .eq("id", data.sessionId);
-      session.mood_sticker = data.moodSticker;
-      session.mood_reason = data.userMessage || null;
+    // Save the mood sticker and the reason the child gave for it.
+    const moodUpdate: { mood_sticker?: string; mood_reason?: string } = {};
+    if (data.moodSticker && !session.mood_sticker) moodUpdate.mood_sticker = data.moodSticker;
+    if (data.moodReason?.trim()) moodUpdate.mood_reason = data.moodReason.trim();
+    if (Object.keys(moodUpdate).length > 0) {
+      await supabase.from("sessions").update(moodUpdate).eq("id", data.sessionId);
+      Object.assign(session, moodUpdate);
     }
 
     // Only load the configured page of the configured book (printed page + book offset).

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Bar,
@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { AlineHeader } from "@/components/aline-header";
+import { supabase } from "@/integrations/supabase/client";
 import {
   MOODS,
   MOOD_DISTRIBUTION,
@@ -49,11 +50,27 @@ const PIE_COLORS = [
   "var(--color-chart-5)",
 ];
 
+type MoodRow = {
+  id: string;
+  student_name: string;
+  mood_sticker: string | null;
+  mood_reason: string | null;
+  created_at: string;
+};
+
 function DashboardPage() {
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
+  const [moodRows, setMoodRows] = useState<MoodRow[]>([]);
 
   useEffect(() => {
     setQuizzes(loadQuizResults());
+    void supabase
+      .from("sessions")
+      .select("id, student_name, mood_sticker, mood_reason, created_at")
+      .not("mood_sticker", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setMoodRows((data as MoodRow[] | null) ?? []));
   }, []);
 
   const totalMinutes = WEEKLY_ACTIVITY.reduce((a, d) => a + d.minutes, 0);
@@ -84,6 +101,13 @@ function DashboardPage() {
       <main className="mx-auto w-full max-w-3xl px-4 pt-8">
         <h1 className="text-3xl font-black">پیشرفت این هفته</h1>
         <p className="mt-2 text-sm text-muted-foreground">خلاصه‌ای از جلسه‌های کودک با الین.</p>
+
+        <Link
+          to="/settings"
+          className="mt-4 inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-accent-foreground transition-opacity hover:opacity-90"
+        >
+          تنظیم جلسهٔ جدید ⚙️
+        </Link>
 
         <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="دقیقهٔ یادگیری" value={toFa(totalMinutes)} emoji="⏱️" />
@@ -210,6 +234,36 @@ function DashboardPage() {
             </div>
           </section>
         ) : null}
+
+        <section className="card-soft mt-5 p-4 sm:p-6">
+          <h2 className="mb-4 text-lg font-black">حال‌وهوای کودک و دلیلش</h2>
+          {moodRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">هنوز حالی ثبت نشده است.</p>
+          ) : (
+            <ul className="grid gap-3">
+              {moodRows.map((r) => {
+                const m = MOODS.find((x) => x.id === r.mood_sticker);
+                return (
+                  <li key={r.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-2xl bg-secondary/60 p-3">
+                    <span className="text-2xl">{m?.emoji ?? "🙂"}</span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold">
+                        {m?.label ?? r.mood_sticker}
+                        {r.student_name ? ` — ${r.student_name}` : ""}
+                      </span>
+                      <span className="text-balance-fa block text-sm text-muted-foreground">
+                        {r.mood_reason?.trim() ? `«${r.mood_reason}»` : "دلیلی نگفت."}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {formatFaDate(new Date(r.created_at).getTime())}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
 
         <section className="card-soft mt-5 p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-black">جلسه‌های اخیر</h2>
