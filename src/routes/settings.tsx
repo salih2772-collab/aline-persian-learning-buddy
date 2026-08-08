@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlineHeader } from "@/components/aline-header";
 import { BookUploader } from "@/components/book-uploader";
@@ -31,7 +31,6 @@ const fieldClass =
   "w-full rounded-xl border border-input bg-card px-4 py-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring";
 
 function SettingsPage() {
-  const navigate = useNavigate();
   const [form, setForm] = useState<SessionSettings>(DEFAULT_SETTINGS);
   const [saved, setSaved] = useState(false);
 
