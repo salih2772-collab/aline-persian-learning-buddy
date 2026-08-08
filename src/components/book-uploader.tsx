@@ -121,6 +121,20 @@ export function BookUploader({ book: initialBook }: { book: string }) {
         />
       </label>
 
+      <label className="grid gap-2">
+        <span className="text-sm font-bold">اختلاف شماره صفحه</span>
+        <input
+          className={fieldClass}
+          value={offset}
+          onChange={(e) => setOffset(e.target.value)}
+          inputMode="numeric"
+          placeholder="۶"
+        />
+        <span className="text-xs text-muted-foreground">
+          اگر صفحه ۱ کتاب، صفحه ۷ فایل PDF است، اینجا ۶ بنویسید
+        </span>
+      </label>
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
