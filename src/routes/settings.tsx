@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlineHeader } from "@/components/aline-header";
+import { BookUploader } from "@/components/book-uploader";
 import { BOOKS, DEFAULT_SETTINGS, loadSettings, saveSettings, type SessionSettings } from "@/lib/aline";
 
 export const Route = createFileRoute("/settings")({
@@ -141,7 +142,10 @@ function SettingsPage() {
             {saved ? <span className="text-sm font-bold text-success">ذخیره شد ✓</span> : null}
           </div>
         </form>
+
+        <BookUploader book={form.book} />
       </main>
+
     </div>
   );
 }

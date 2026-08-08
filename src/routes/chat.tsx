@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
 import { QuizCard } from "@/components/quiz-card";
+import { chat, createSession } from "@/lib/aline.functions";
 import {
   DEFAULT_SETTINGS,
-  FALLBACK_REPLIES,
   MOODS,
-  MOOD_REPLIES,
   generateContent,
   loadSettings,
   saveQuizResult,
@@ -32,19 +32,24 @@ export const Route = createFileRoute("/chat")({
 });
 
 type Msg = { id: number; from: "aline" | "child"; text: string };
-type Stage = "greeting" | "mood" | "content" | "quiz" | "free";
+type Stage = "start" | "mood" | "talk" | "quiz" | "free";
 
 let msgId = 0;
 const nextId = () => ++msgId;
 
 function ChatPage() {
   const [settings, setSettings] = useState<SessionSettings>(DEFAULT_SETTINGS);
-  const [stage, setStage] = useState<Stage>("greeting");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [stage, setStage] = useState<Stage>("start");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [thinking, setThinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<{ content: GeneratedContent; mood: Mood } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const startSession = useServerFn(createSession);
+  const sendChat = useServerFn(chat);
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -58,35 +63,69 @@ function ChatPage() {
     setMessages((m) => [...m, { id: nextId(), from, text }]);
   }
 
-  async function alineSays(texts: string[], delay = 900) {
-    for (const t of texts) {
-      setThinking(true);
-      await new Promise((r) => setTimeout(r, delay));
+  async function talk(id: string, userMessage: string, moodSticker: string | null = null) {
+    setThinking(true);
+    setError(null);
+    try {
+      const reply = await sendChat({ data: { sessionId: id, userMessage, moodSticker } });
+      push("aline", [reply.message, reply.question].filter(Boolean).join("\n\n"));
+      return reply.phase;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ارتباط با الین برقرار نشد.");
+      return null;
+    } finally {
       setThinking(false);
-      push("aline", t);
-      await new Promise((r) => setTimeout(r, 250));
     }
   }
 
-  async function startGreeting() {
-    const name = settings.childName.trim();
+  async function begin() {
     push("child", "سلام الین! 👋");
-    await alineSays([
-      `سلام ${name ? name + " جان" : "دوست خوبم"}! 🌼 خیلی خوشحالم که اومدی.`,
-      "قبل از شروع بگو ببینم امروز حالت چطوره؟",
-    ]);
-    setStage("mood");
+    setThinking(true);
+    setError(null);
+    let id: string;
+    try {
+      const s = await startSession({
+        data: {
+          student_name: settings.childName,
+          content_type: settings.contentType,
+          book: settings.book,
+          chapter: settings.chapter,
+          page: settings.page,
+          moral_topic: settings.contentType === "story" ? "مهربانی و راستگویی" : null,
+        },
+      });
+      id = s.sessionId;
+      setSessionId(id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "شروع جلسه ممکن نشد.");
+      setThinking(false);
+      return;
+    }
+    setThinking(false);
+    const phase = await talk(id, "سلام الین!");
+    if (phase) setStage("mood");
   }
 
   async function pickMood(mood: Mood) {
+    if (!sessionId) return;
     const m = MOODS.find((x) => x.id === mood)!;
     push("child", `${m.emoji} ${m.label}`);
-    setStage("content");
+    setStage("talk");
+    const phase = await talk(sessionId, `${m.emoji} ${m.label}`, mood);
+    if (!phase) return;
+    // Next turn moves into the teaching/story phase.
     const content = generateContent(settings, mood);
     setPending({ content, mood });
-    await alineSays([MOOD_REPLIES[mood], ...content.messages], 1100);
-    await alineSays(["حالا یک آزمون کوچولوی چندگزینه‌ای داریم. آماده‌ای؟ ✏️"], 800);
-    setStage("quiz");
+  }
+
+  async function sendFree(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || thinking || !sessionId) return;
+    setInput("");
+    push("child", text);
+    const phase = await talk(sessionId, text);
+    if (phase === "content" && pending && stage === "talk") setStage("quiz");
   }
 
   function finishQuiz(correct: number, total: number) {
@@ -101,16 +140,6 @@ function ChatPage() {
       });
     }
     setStage("free");
-  }
-
-  async function sendFree(e: React.FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || thinking) return;
-    setInput("");
-    push("child", text);
-    const reply = FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)]!;
-    await alineSays([reply], 900);
   }
 
   return (
@@ -128,11 +157,9 @@ function ChatPage() {
                 height={512}
                 className="animate-float h-28 w-28"
               />
-              <p className="text-balance-fa text-muted-foreground">
-                برای شروع، به الین سلام کن!
-              </p>
+              <p className="text-balance-fa text-muted-foreground">برای شروع، به الین سلام کن!</p>
               <button
-                onClick={startGreeting}
+                onClick={begin}
                 className="rounded-full bg-primary px-7 py-3 text-base font-black text-primary-foreground transition-opacity hover:opacity-90"
               >
                 سلام الین! 👋
@@ -148,6 +175,13 @@ function ChatPage() {
           ))}
 
           {thinking ? <Thinking /> : null}
+
+          {error ? (
+            <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+
           <div ref={bottomRef} />
         </div>
 
@@ -175,7 +209,7 @@ function ChatPage() {
           </div>
         ) : null}
 
-        {stage === "content" || stage === "free" ? (
+        {stage === "talk" || stage === "free" ? (
           <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
             <input
               value={input}
