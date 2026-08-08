@@ -186,7 +186,7 @@ function makeLessonQuiz(s: SessionSettings): QuizQuestion[] {
       correct: 0,
     },
     {
-      question: `درس امروز از کدام فصل بود؟`,
+      question: `درس امروز از کدام صفحه بود؟`,
       options: ["صفحهٔ ۹۹", `صفحهٔ ${s.page}`, "صفحهٔ آخر کتاب"],
       correct: 1,
     },

@@ -20,29 +20,6 @@ export function AlineHeader({ subtitle }: { subtitle?: string }) {
           ) : null}
         </span>
       </Link>
-      <nav className="flex shrink-0 items-center gap-1 text-sm">
-        <Link
-          to="/chat"
-          activeProps={{ className: "bg-secondary text-secondary-foreground" }}
-          className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-secondary"
-        >
-          گفت‌وگو
-        </Link>
-        <Link
-          to="/settings"
-          activeProps={{ className: "bg-secondary text-secondary-foreground" }}
-          className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-secondary"
-        >
-          تنظیمات
-        </Link>
-        <Link
-          to="/dashboard"
-          activeProps={{ className: "bg-secondary text-secondary-foreground" }}
-          className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-secondary"
-        >
-          داشبورد
-        </Link>
-      </nav>
     </header>
   );
 }
