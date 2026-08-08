@@ -66,17 +66,26 @@ export const chat = createServerFn({ method: "POST" })
       session.mood_reason = data.userMessage || null;
     }
 
-    // Only load the configured chapter/page of the configured book.
+    // Only load the configured page of the configured book (printed page + book offset).
     let pageContent: string | null = null;
-    if (phase === "content" && session.book && session.chapter && session.page) {
-      const { data: bookPage } = await supabase
-        .from("book_pages")
-        .select("content")
-        .eq("book", session.book)
-        .eq("chapter", session.chapter)
-        .eq("page", session.page)
+    if (phase === "content" && session.book && session.page) {
+      const { toEn } = await import("./aline");
+      const printed = Number(toEn(session.page));
+      const { data: bookRow } = await supabase
+        .from("books")
+        .select("page_offset")
+        .eq("name", session.book)
         .maybeSingle();
-      pageContent = bookPage?.content ?? null;
+      const offset = bookRow?.page_offset ?? 0;
+      if (Number.isFinite(printed)) {
+        const { data: bookPage } = await supabase
+          .from("book_pages")
+          .select("content")
+          .eq("book", session.book)
+          .eq("page", String(printed + offset))
+          .maybeSingle();
+        pageContent = bookPage?.content ?? null;
+      }
     }
 
     if (data.userMessage.trim()) {
