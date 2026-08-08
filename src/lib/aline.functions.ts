@@ -146,6 +146,88 @@ export const chat = createServerFn({ method: "POST" })
     return { phase, message, question };
   });
 
+const QuizInput = z.object({ sessionId: z.string().uuid() });
+
+/** Builds a 3-question multiple-choice quiz from the content of this session. */
+export const generateQuiz = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => QuizInput.parse(input))
+  .handler(async ({ data }) => {
+    const apiKey = process.env["OPENROUTER_API_KEY"];
+    if (!apiKey) throw new Error("کلید OpenRouter تنظیم نشده است.");
+    const { createServerSupabase } = await import("./supabase.server");
+    const { buildQuizPrompt } = await import("./aline-prompt.server");
+    const { loadPageContent } = await import("./book-page.server");
+    const supabase = createServerSupabase();
+
+    const { data: session } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("id", data.sessionId)
+      .single();
+    if (!session) throw new Error("جلسه پیدا نشد.");
+
+    const { data: history } = await supabase
+      .from("messages")
+      .select("sender, phase, text")
+      .eq("session_id", data.sessionId)
+      .order("created_at", { ascending: true });
+
+    const contentText = (history ?? [])
+      .filter((m) => m.phase === "content" && m.sender === "aline")
+      .map((m) => m.text)
+      .join("\n\n")
+      .trim();
+    if (!contentText) throw new Error("هنوز محتوایی برای آزمون ساخته نشده است.");
+
+    const pageContent =
+      session.book && session.page
+        ? await loadPageContent(supabase, session.book, session.page)
+        : null;
+
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "openai/gpt-4o-mini",
+        messages: [{ role: "system", content: buildQuizPrompt(session, contentText, pageContent) }],
+        response_format: { type: "json_object" },
+        temperature: 0.4,
+      }),
+    });
+    if (!res.ok) {
+      if (res.status === 429) throw new Error("کمی شلوغ است، چند لحظه بعد دوباره امتحان کن.");
+      throw new Error(`ساخت آزمون ممکن نشد (${res.status}).`);
+    }
+
+    const payload = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const raw = payload.choices?.[0]?.message?.content ?? "";
+    let questions: { question: string; options: string[]; correct: number }[] = [];
+    try {
+      const parsed = JSON.parse(raw) as {
+        questions?: { question?: string; options?: string[]; correct?: number }[];
+      };
+      questions = (parsed.questions ?? [])
+        .filter((q) => q.question && Array.isArray(q.options) && q.options.length >= 2)
+        .map((q) => ({
+          question: q.question!,
+          options: q.options!,
+          correct: Math.min(Math.max(Number(q.correct) || 0, 0), q.options!.length - 1),
+        }))
+        .slice(0, 5);
+    } catch {
+      questions = [];
+    }
+    if (questions.length === 0) throw new Error("ساخت آزمون ممکن نشد.");
+
+    const topic =
+      session.content_type === "lesson"
+        ? `${session.book ?? "درس"} — صفحهٔ ${session.page ?? ""}`.trim()
+        : (session.moral_topic ?? "داستان اخلاقی");
+
+    return { questions, topic, type: session.content_type === "lesson" ? "درس" : "داستان" };
+  });
+
+
 const ExtractBookInput = z.object({
   path: z.string().min(1),
   book: z.string().min(1),
