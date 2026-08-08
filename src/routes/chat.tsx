@@ -44,12 +44,18 @@ function ChatPage() {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [pending, setPending] = useState<{ content: GeneratedContent; mood: Mood } | null>(null);
+  const [pending, setPending] = useState<{
+    questions: QuizQuestion[];
+    topic: string;
+    type: "داستان" | "درس";
+    mood: Mood;
+  } | null>(null);
   const [mood, setMood] = useState<Mood | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const startSession = useServerFn(createSession);
   const sendChat = useServerFn(chat);
+  const makeQuiz = useServerFn(generateQuiz);
 
   useEffect(() => {
     setSettings(loadSettings());
