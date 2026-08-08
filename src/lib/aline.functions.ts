@@ -66,26 +66,11 @@ export const chat = createServerFn({ method: "POST" })
       Object.assign(session, moodUpdate);
     }
 
-    // Only load the configured page of the configured book (printed page + book offset).
+    // Load the configured page of the configured book (printed page + book offset).
+    // Stories may also reference a page so Aline can weave learning content in.
     let pageContent: string | null = null;
     if (phase === "content" && session.book && session.page) {
-      const { toEn } = await import("./aline");
-      const printed = Number(toEn(session.page));
-      const { data: bookRow } = await supabase
-        .from("books")
-        .select("page_offset")
-        .eq("name", session.book)
-        .maybeSingle();
-      const offset = bookRow?.page_offset ?? 0;
-      if (Number.isFinite(printed)) {
-        const { data: bookPage } = await supabase
-          .from("book_pages")
-          .select("content")
-          .eq("book", session.book)
-          .eq("page", String(printed + offset))
-          .maybeSingle();
-        pageContent = bookPage?.content ?? null;
-      }
+      pageContent = await loadPageContent(supabase, session.book, session.page);
     }
 
     if (data.userMessage.trim()) {
