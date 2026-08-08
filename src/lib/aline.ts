@@ -18,6 +18,8 @@ export type SessionSettings = {
   book: string;
   page: string;
   moralTopic: string;
+  /** For stories: also weave content from the chosen book page into the story. */
+  useBookInStory: boolean;
 };
 
 export const DEFAULT_SETTINGS: SessionSettings = {
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: SessionSettings = {
   book: "فارسی سوم دبستان",
   page: "۱۴",
   moralTopic: "مهربانی",
+  useBookInStory: false,
 };
 
 export const MORAL_TOPICS = [
