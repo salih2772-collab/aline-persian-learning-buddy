@@ -162,11 +162,9 @@ export const extractBook = createServerFn({ method: "POST" })
     const { data: file, error } = await supabase.storage.from("textbooks").download(data.path);
     if (error || !file) throw new Error(error?.message ?? "فایل پیدا نشد.");
 
-    const { extractText, getDocumentProxy } = await import("unpdf");
+    const { extractPdfPages } = await import("./pdf-text.server");
     const buffer = new Uint8Array(await file.arrayBuffer());
-    const pdf = await getDocumentProxy(buffer);
-    const { text } = await extractText(pdf, { mergePages: false });
-    const pages = Array.isArray(text) ? text : [text];
+    const pages = await extractPdfPages(buffer);
 
     const rows = pages.map((content, i) => ({
       book: data.book,
