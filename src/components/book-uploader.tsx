@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { extractBook } from "@/lib/aline.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { BOOKS, toFa } from "@/lib/aline";
+import { BOOKS, toEn, toFa } from "@/lib/aline";
 
 const fieldClass =
   "w-full rounded-xl border border-input bg-card px-4 py-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring";
