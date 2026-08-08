@@ -143,6 +143,24 @@ export function BookUploader({ book: initialBook }: { book: string }) {
         >
           {busy ? "در حال پردازش..." : "بارگذاری و استخراج متن"}
         </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setError(null);
+            setStatus(null);
+            try {
+              await saveOffset();
+              await refresh();
+              setStatus("اختلاف شماره صفحه ذخیره شد ✓");
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "ذخیره نشد.");
+            }
+          }}
+          className="rounded-full border border-border px-6 py-3 text-sm font-bold disabled:opacity-50"
+        >
+          ذخیرهٔ اختلاف صفحه
+        </button>
         {status ? <span className="text-sm font-bold text-success">{status}</span> : null}
         {error ? <span className="text-sm font-bold text-destructive">{error}</span> : null}
       </div>
