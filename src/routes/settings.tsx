@@ -197,16 +197,6 @@ function SettingsPage() {
             >
               ذخیرهٔ تنظیمات
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                saveSettings(form);
-                navigate({ to: "/chat" });
-              }}
-              className="rounded-full bg-accent px-6 py-3 text-sm font-bold text-accent-foreground transition-opacity hover:opacity-90"
-            >
-              ذخیره و شروع جلسه
-            </button>
             {saved ? <span className="text-sm font-bold text-success">ذخیره شد ✓</span> : null}
           </div>
         </form>
