@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { Phase } from "./aline-prompt.server";
 
 const CreateSessionInput = z.object({
   student_name: z.string().default(""),
