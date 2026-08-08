@@ -30,6 +30,8 @@ export const DEFAULT_SETTINGS: SessionSettings = {
 
 export const BOOKS = [
   "فارسی دوم دبستان",
+  "ریاضی دوم دبستان",
+  "قرآن دوم دبستان",
   "فارسی سوم دبستان",
   "فارسی چهارم دبستان",
   "علوم سوم دبستان",
