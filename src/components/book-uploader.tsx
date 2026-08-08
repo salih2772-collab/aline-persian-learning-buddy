@@ -11,22 +11,42 @@ const fieldClass =
 export function BookUploader({ book: initialBook }: { book: string }) {
   const [book, setBook] = useState(initialBook);
   const [file, setFile] = useState<File | null>(null);
+  const [offset, setOffset] = useState("0");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [offsets, setOffsets] = useState<Record<string, number>>({});
   const run = useServerFn(extractBook);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from("book_pages").select("book");
+    const [{ data }, { data: bookRows }] = await Promise.all([
+      supabase.from("book_pages").select("book"),
+      supabase.from("books").select("name, page_offset"),
+    ]);
     const next: Record<string, number> = {};
     for (const row of data ?? []) next[row.book] = (next[row.book] ?? 0) + 1;
     setCounts(next);
+    const offs: Record<string, number> = {};
+    for (const row of bookRows ?? []) offs[row.name] = row.page_offset;
+    setOffsets(offs);
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    setOffset(String(offsets[book] ?? 0));
+  }, [book, offsets]);
+
+  async function saveOffset() {
+    const value = Number(toEn(offset)) || 0;
+    const { error: offErr } = await supabase
+      .from("books")
+      .upsert({ name: book, page_offset: value }, { onConflict: "name" });
+    if (offErr) throw new Error(offErr.message);
+  }
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +55,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
     setStatus(null);
     setError(null);
     try {
+      await saveOffset();
       const path = `${Date.now()}-${encodeURIComponent(file.name)}`;
       const { error: upErr } = await supabase.storage.from("textbooks").upload(path, file, {
         contentType: "application/pdf",
@@ -50,6 +71,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
       setBusy(false);
     }
   }
+
 
   return (
     <form onSubmit={upload} className="card-soft mt-6 grid gap-4 p-5 sm:p-7">
