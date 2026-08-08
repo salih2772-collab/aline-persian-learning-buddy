@@ -41,6 +41,30 @@ export type Database = {
         }
         Relationships: []
       }
+      books: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          page_offset: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          page_offset?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          page_offset?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           created_at: string
