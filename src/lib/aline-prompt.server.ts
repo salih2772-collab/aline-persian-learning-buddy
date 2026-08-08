@@ -21,16 +21,33 @@ export function isGentleMood(mood: string | null | undefined) {
 export function buildSystemPrompt(session: SessionRow, phase: Phase, pageContent: string | null) {
   const name = session.student_name?.trim() || "دوست خوبم";
   const gentle = isGentleMood(session.mood_sticker);
+  const isStory = session.content_type !== "lesson";
+  const book = session.book ?? "";
+  const isMath = book.includes("ریاضی");
+  const isQuran = book.includes("قرآن");
+
+  const weave =
+    isStory && pageContent
+      ? isMath
+        ? "در دل داستان، به‌شکل طبیعی و نامحسوس شمارش و جمع‌وتفریق ساده با اشیای داستان (سیب، توپ، پرنده و…) بیاور که با مفهوم همان صفحهٔ کتاب ریاضی هماهنگ باشد. داستان نباید شبیه تمرین درسی شود؛ فقط یک یا دو جای کوچک عدد و شمارش داشته باشد."
+        : isQuran
+          ? "در دل داستان، یکی دو کلمهٔ قرآنیِ همان صفحه را نرم و ساده به کار ببر و معنی‌اش را در جریان داستان روشن کن. لحن داستانی بماند و شبیه درس‌دادن نشود."
+          : "یکی دو نکتهٔ کوچک از متن همان صفحه را نامحسوس در داستان بگنجان، بدون اینکه داستان به درس تبدیل شود."
+      : "";
 
   const phaseGuide: Record<Phase, string> = {
     greeting: `مرحلهٔ فعلی: «سلام و احوال‌پرسی». به ${name} سلام گرم بده، خودت را کوتاه معرفی کن و بپرس امروز چه حسی دارد (خوشحال، خوب، معمولی، ناراحت، عصبانی).`,
     day_check: `مرحلهٔ فعلی: «دربارهٔ روزش». به حسی که گفت واکنش مهربان نشان بده و یک سؤال کوتاه دربارهٔ امروزش بپرس (مدرسه، دوستان، بازی).`,
-    content:
-      session.content_type === "lesson"
-        ? `مرحلهٔ فعلی: «آموزش». فقط بر پایهٔ متن درسِ داده‌شده آموزش بده؛ چیزی از خودت به متن اضافه نکن. خلاصهٔ ساده و کودکانه بگو و در پایان یک سؤال از همان صفحه بپرس.`
-        : `مرحلهٔ فعلی: «داستان». یک داستان کوتاه اخلاقی${
+    content: !isStory
+      ? `مرحلهٔ فعلی: «آموزش». فقط بر پایهٔ متن درسِ داده‌شده آموزش بده؛ چیزی از خودت به متن اضافه نکن. خلاصهٔ ساده و کودکانه بگو و در پایان یک سؤال از همان صفحه بپرس.`
+      : [
+          `مرحلهٔ فعلی: «داستان». یک داستان کوتاه اخلاقی${
             session.moral_topic ? ` دربارهٔ «${session.moral_topic}»` : ""
           } تعریف کن (حداکثر ۸ جمله)، پیام اخلاقی‌اش را بگو و در پایان یک سؤال بپرس.`,
+          weave,
+        ]
+          .filter(Boolean)
+          .join(" "),
   };
 
   return [
@@ -44,11 +61,25 @@ export function buildSystemPrompt(session: SessionRow, phase: Phase, pageContent
       : "",
     phaseGuide[phase],
     pageContent
-      ? `متن صفحهٔ درس (کتاب: ${session.book} — فصل: ${session.chapter} — صفحه: ${session.page}):\n"""\n${pageContent.slice(0, 6000)}\n"""`
-      : phase === "content" && session.content_type === "lesson"
+      ? `متن صفحهٔ کتاب (کتاب: ${session.book} — صفحه: ${session.page}):\n"""\n${pageContent.slice(0, 6000)}\n"""`
+      : phase === "content" && !isStory
         ? "متن این صفحه در پایگاه داده موجود نیست؛ مؤدبانه بگو که هنوز محتوای این صفحه را نداری و پیشنهاد بده با هم یک داستان بخوانید."
         : "",
     'خروجی را فقط به صورت JSON معتبر بده با این ساختار: {"message": "متن گفت‌وگو", "question": "سؤالی که از کودک می‌پرسی"}',
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** System prompt for building a short multiple-choice quiz from the session content. */
+export function buildQuizPrompt(session: SessionRow, contentText: string, pageContent: string | null) {
+  return [
+    "تو «الین» هستی و می‌خواهی از محتوایی که همین الان با کودک دبستانی کار کردی، یک آزمون کوتاه بسازی.",
+    "دقیقاً ۳ سؤال چهارگزینه‌ای بساز (هر سؤال ۳ گزینه). سؤال‌ها باید فقط دربارهٔ همین محتوا باشند، نه چیز دیگر.",
+    "زبان فارسی ساده و کودکانه؛ سؤال‌ها کوتاه و گزینه‌ها کوتاه باشند. فقط یک گزینه درست باشد.",
+    `محتوایی که گفته شد:\n"""\n${contentText.slice(0, 6000)}\n"""`,
+    pageContent ? `متن صفحهٔ کتاب مرتبط:\n"""\n${pageContent.slice(0, 3000)}\n"""` : "",
+    'خروجی فقط JSON معتبر: {"questions":[{"question":"...","options":["...","...","..."],"correct":0}]}',
   ]
     .filter(Boolean)
     .join("\n\n");

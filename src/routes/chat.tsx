@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
 import { QuizCard } from "@/components/quiz-card";
-import { chat, createSession } from "@/lib/aline.functions";
+import { chat, createSession, generateQuiz } from "@/lib/aline.functions";
 import {
   DEFAULT_SETTINGS,
   MOODS,
-  generateContent,
   loadSettings,
   saveQuizResult,
-  type GeneratedContent,
   type Mood,
+  type QuizQuestion,
   type SessionSettings,
 } from "@/lib/aline";
 
@@ -45,12 +44,18 @@ function ChatPage() {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [pending, setPending] = useState<{ content: GeneratedContent; mood: Mood } | null>(null);
+  const [pending, setPending] = useState<{
+    questions: QuizQuestion[];
+    topic: string;
+    type: "داستان" | "درس";
+    mood: Mood;
+  } | null>(null);
   const [mood, setMood] = useState<Mood | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const startSession = useServerFn(createSession);
   const sendChat = useServerFn(chat);
+  const makeQuiz = useServerFn(generateQuiz);
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -90,13 +95,14 @@ function ChatPage() {
     setError(null);
     let id: string;
     try {
+      const useBook = settings.contentType === "lesson" || settings.useBookInStory;
       const s = await startSession({
         data: {
           student_name: settings.childName,
           content_type: settings.contentType,
-          book: settings.book,
+          book: useBook ? settings.book : null,
           chapter: null,
-          page: settings.contentType === "lesson" ? settings.page : null,
+          page: useBook ? settings.page : null,
           moral_topic: settings.contentType === "story" ? settings.moralTopic : null,
         },
       });
@@ -133,20 +139,30 @@ function ChatPage() {
       const phase = await talk(sessionId, text, mood, text);
       if (!phase) return;
       setStage("talk");
-      // Next turn moves into the teaching/story phase.
-      setPending({ content: generateContent(settings, mood), mood });
       return;
     }
 
     const phase = await talk(sessionId, text);
-    if (phase === "content" && pending && stage === "talk") setStage("quiz");
+    if (phase === "content" && stage === "talk" && mood) {
+      // Build the quiz from the story/lesson Aline just gave.
+      setThinking(true);
+      try {
+        const quiz = await makeQuiz({ data: { sessionId } });
+        setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood });
+        setStage("quiz");
+      } catch {
+        setStage("free");
+      } finally {
+        setThinking(false);
+      }
+    }
   }
 
   function finishQuiz(correct: number, total: number) {
     if (pending) {
       saveQuizResult({
-        topic: pending.content.topic,
-        type: pending.content.type,
+        topic: pending.topic,
+        type: pending.type,
         correct,
         total,
         score: Math.round((correct / total) * 100),
@@ -216,7 +232,7 @@ function ChatPage() {
 
         {stage === "quiz" && pending && !thinking ? (
           <div className="mt-4">
-            <QuizCard questions={pending.content.quiz} onFinish={finishQuiz} />
+            <QuizCard questions={pending.questions} onFinish={finishQuiz} />
           </div>
         ) : null}
 

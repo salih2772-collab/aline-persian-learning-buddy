@@ -38,6 +38,7 @@ export const chat = createServerFn({ method: "POST" })
     const apiKey = process.env["OPENROUTER_API_KEY"];
     const { createServerSupabase } = await import("./supabase.server");
     const { buildSystemPrompt, nextPhase } = await import("./aline-prompt.server");
+    const { loadPageContent } = await import("./book-page.server");
     const supabase = createServerSupabase();
 
     const { data: session, error: sErr } = await supabase
@@ -66,26 +67,11 @@ export const chat = createServerFn({ method: "POST" })
       Object.assign(session, moodUpdate);
     }
 
-    // Only load the configured page of the configured book (printed page + book offset).
+    // Load the configured page of the configured book (printed page + book offset).
+    // Stories may also reference a page so Aline can weave learning content in.
     let pageContent: string | null = null;
     if (phase === "content" && session.book && session.page) {
-      const { toEn } = await import("./aline");
-      const printed = Number(toEn(session.page));
-      const { data: bookRow } = await supabase
-        .from("books")
-        .select("page_offset")
-        .eq("name", session.book)
-        .maybeSingle();
-      const offset = bookRow?.page_offset ?? 0;
-      if (Number.isFinite(printed)) {
-        const { data: bookPage } = await supabase
-          .from("book_pages")
-          .select("content")
-          .eq("book", session.book)
-          .eq("page", String(printed + offset))
-          .maybeSingle();
-        pageContent = bookPage?.content ?? null;
-      }
+      pageContent = await loadPageContent(supabase, session.book, session.page);
     }
 
     if (data.userMessage.trim()) {
@@ -160,6 +146,88 @@ export const chat = createServerFn({ method: "POST" })
     return { phase, message, question };
   });
 
+const QuizInput = z.object({ sessionId: z.string().uuid() });
+
+/** Builds a 3-question multiple-choice quiz from the content of this session. */
+export const generateQuiz = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => QuizInput.parse(input))
+  .handler(async ({ data }) => {
+    const apiKey = process.env["OPENROUTER_API_KEY"];
+    if (!apiKey) throw new Error("کلید OpenRouter تنظیم نشده است.");
+    const { createServerSupabase } = await import("./supabase.server");
+    const { buildQuizPrompt } = await import("./aline-prompt.server");
+    const { loadPageContent } = await import("./book-page.server");
+    const supabase = createServerSupabase();
+
+    const { data: session } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("id", data.sessionId)
+      .single();
+    if (!session) throw new Error("جلسه پیدا نشد.");
+
+    const { data: history } = await supabase
+      .from("messages")
+      .select("sender, phase, text")
+      .eq("session_id", data.sessionId)
+      .order("created_at", { ascending: true });
+
+    const contentText = (history ?? [])
+      .filter((m) => m.phase === "content" && m.sender === "aline")
+      .map((m) => m.text)
+      .join("\n\n")
+      .trim();
+    if (!contentText) throw new Error("هنوز محتوایی برای آزمون ساخته نشده است.");
+
+    const pageContent =
+      session.book && session.page
+        ? await loadPageContent(supabase, session.book, session.page)
+        : null;
+
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "openai/gpt-4o-mini",
+        messages: [{ role: "system", content: buildQuizPrompt(session, contentText, pageContent) }],
+        response_format: { type: "json_object" },
+        temperature: 0.4,
+      }),
+    });
+    if (!res.ok) {
+      if (res.status === 429) throw new Error("کمی شلوغ است، چند لحظه بعد دوباره امتحان کن.");
+      throw new Error(`ساخت آزمون ممکن نشد (${res.status}).`);
+    }
+
+    const payload = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const raw = payload.choices?.[0]?.message?.content ?? "";
+    let questions: { question: string; options: string[]; correct: number }[] = [];
+    try {
+      const parsed = JSON.parse(raw) as {
+        questions?: { question?: string; options?: string[]; correct?: number }[];
+      };
+      questions = (parsed.questions ?? [])
+        .filter((q) => q.question && Array.isArray(q.options) && q.options.length >= 2)
+        .map((q) => ({
+          question: q.question!,
+          options: q.options!,
+          correct: Math.min(Math.max(Number(q.correct) || 0, 0), q.options!.length - 1),
+        }))
+        .slice(0, 5);
+    } catch {
+      questions = [];
+    }
+    if (questions.length === 0) throw new Error("ساخت آزمون ممکن نشد.");
+
+    const topic =
+      session.content_type === "lesson"
+        ? `${session.book ?? "درس"} — صفحهٔ ${session.page ?? ""}`.trim()
+        : (session.moral_topic ?? "داستان اخلاقی");
+
+    return { questions, topic, type: session.content_type === "lesson" ? "درس" : "داستان" };
+  });
+
+
 const ExtractBookInput = z.object({
   path: z.string().min(1),
   book: z.string().min(1),
@@ -176,11 +244,9 @@ export const extractBook = createServerFn({ method: "POST" })
     const { data: file, error } = await supabase.storage.from("textbooks").download(data.path);
     if (error || !file) throw new Error(error?.message ?? "فایل پیدا نشد.");
 
-    const { extractText, getDocumentProxy } = await import("unpdf");
+    const { extractPdfPages } = await import("./pdf-text.server");
     const buffer = new Uint8Array(await file.arrayBuffer());
-    const pdf = await getDocumentProxy(buffer);
-    const { text } = await extractText(pdf, { mergePages: false });
-    const pages = Array.isArray(text) ? text : [text];
+    const pages = await extractPdfPages(buffer);
 
     const rows = pages.map((content, i) => ({
       book: data.book,
