@@ -50,7 +50,7 @@ function Index() {
         </Link>
 
         <Link
-          to="/settings"
+          to="/dashboard"
           className="card-soft group flex flex-col items-center gap-3 p-7 text-center transition-transform hover:-translate-y-1 hover:shadow-pop"
         >
           <span className="grid h-16 w-16 place-items-center rounded-full bg-accent/25 text-3xl">👩‍🏫</span>
@@ -62,9 +62,6 @@ function Index() {
         </Link>
       </div>
 
-      <Link to="/dashboard" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-        مشاهدهٔ داشبورد پیشرفت →
-      </Link>
     </main>
   );
 }
