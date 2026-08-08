@@ -93,6 +93,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
               <span className="font-bold">{b}</span>
               <span className={uploaded ? "font-bold text-success" : "text-muted-foreground"}>
                 {uploaded ? `بارگذاری شده ✓ (${toFa(counts[b] ?? 0)} صفحه)` : "هنوز بارگذاری نشده"}
+                {offsets[b] ? ` — اختلاف صفحه: ${toFa(offsets[b] ?? 0)}` : ""}
               </span>
             </li>
           );
