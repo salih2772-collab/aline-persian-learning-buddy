@@ -87,9 +87,9 @@ export const chat = createServerFn({ method: "POST" })
     }
 
     // Load the configured page of the configured book (printed page + book offset).
-    // Stories may also reference a page so Aline can weave learning content in.
+    // Only the teaching turn needs it — greeting/day_check and the wrap-up don't.
     let pageContent: string | null = null;
-    if (phase === "content" && session.book && session.page) {
+    if (phase === "content" && !wrapUp && session.book && session.page) {
       pageContent = await loadPageContent(supabase, session.book, session.page);
     }
 
