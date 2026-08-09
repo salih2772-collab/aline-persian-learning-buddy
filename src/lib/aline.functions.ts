@@ -34,12 +34,15 @@ const ChatInput = z.object({
   finish: z.boolean().default(false),
 });
 
-/** Short/disengaged answers ("نمی‌دونم", "نه", "باشه"…) hint the child is done. */
-const DISENGAGED = ["نمیدونم", "نمی‌دونم", "نه", "آره", "باشه", "هیچی", "خسته", "بسه", "تمام", "تموم"];
-function isDisengaged(text: string) {
+/**
+ * Only an explicit request to stop ends the session early. Short answers from a
+ * 7-year-old ("اره", "نه") are normal and must never end the session.
+ */
+const STOP_PHRASES = ["تمام", "تموم", "بسه", "دیگه بسه", "خسته شدم", "خداحافظ", "بای", "کافیه", "نمیخوام ادامه"];
+function wantsToStop(text: string) {
   const t = text.trim();
   if (!t) return false;
-  return t.length <= 4 || DISENGAGED.includes(t);
+  return STOP_PHRASES.some((p) => t === p || t.includes(p));
 }
 
 
@@ -70,11 +73,14 @@ export const chat = createServerFn({ method: "POST" })
     const phase: Phase = !lastAline ? "greeting" : nextPhase(lastAline.phase as Phase);
 
     // Decide whether this reply should end the session instead of asking again.
-    const contentTurns = past.filter((m) => m.phase === "content" && m.sender === "child").length;
+    // Counts this turn too; needs at least 6 real exchanges in the content phase.
+    const contentTurns =
+      past.filter((m) => m.phase === "content" && m.sender === "child").length +
+      (phase === "content" && data.userMessage.trim() ? 1 : 0);
     const wrapUp =
       data.finish ||
-      (phase === "content" &&
-        (contentTurns >= 6 || (contentTurns >= 2 && isDisengaged(data.userMessage))));
+      (phase === "content" && (contentTurns >= 6 || wantsToStop(data.userMessage)));
+    const shortAnswer = phase === "content" && !wrapUp && data.userMessage.trim().length <= 6;
 
 
     // Save the mood sticker and the reason the child gave for it.
@@ -106,7 +112,7 @@ export const chat = createServerFn({ method: "POST" })
     const messages = [
       {
         role: "system" as const,
-        content: buildSystemPrompt(session, phase, pageContent, wrapUp),
+        content: buildSystemPrompt(session, phase, pageContent, wrapUp, shortAnswer),
       },
       ...compactHistory(past),
       ...(data.userMessage.trim()
