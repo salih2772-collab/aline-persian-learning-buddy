@@ -45,6 +45,7 @@ function ChatPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState<(() => void) | null>(null);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<{
     questions: QuizQuestion[];
