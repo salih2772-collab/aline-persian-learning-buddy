@@ -183,6 +183,10 @@ export const chat = createServerFn({ method: "POST" })
     }
 
     if (wrapUp) question = "";
+    // The chat bubbles render plain text, so markdown must never reach them.
+    message = stripMarkdown(message);
+    question = stripMarkdown(question);
+
 
     await supabase.from("messages").insert({
       session_id: data.sessionId,
