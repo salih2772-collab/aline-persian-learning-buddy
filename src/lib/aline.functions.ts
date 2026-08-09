@@ -112,6 +112,7 @@ export const chat = createServerFn({ method: "POST" })
           messages,
           response_format: { type: "json_object" },
           temperature: 0.8,
+          max_tokens: 900,
         }),
         // Never let the child stare at a spinner forever.
         signal: AbortSignal.timeout(30_000),
@@ -134,6 +135,8 @@ export const chat = createServerFn({ method: "POST" })
         body: body.slice(0, 500),
       });
       if (res.status === 429) throw new Error("کمی شلوغ است، چند لحظه بعد دوباره امتحان کن.");
+      if (res.status === 402)
+        throw new Error("اعتبار سرویس هوش مصنوعی تمام شده است؛ لطفاً به والدین اطلاع بده.");
       throw new Error("الین الان نتونست جواب بده، دوباره امتحان کن.");
     }
 
@@ -216,6 +219,7 @@ export const generateQuiz = createServerFn({ method: "POST" })
           ],
           response_format: { type: "json_object" },
           temperature: 0.4,
+          max_tokens: 900,
         }),
         signal: AbortSignal.timeout(30_000),
       });
