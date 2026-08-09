@@ -47,7 +47,7 @@ export const chat = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInput.parse(input))
   .handler(async ({ data }) => {
     const { createServerSupabase } = await import("./supabase.server");
-    const { buildSystemPrompt, nextPhase } = await import("./aline-prompt.server");
+    const { buildSystemPrompt, nextPhase, compactHistory } = await import("./aline-prompt.server");
     const { loadPageContent } = await import("./book-page.server");
     const { callAi } = await import("./ai-model.server");
     const supabase = createServerSupabase();
@@ -87,9 +87,9 @@ export const chat = createServerFn({ method: "POST" })
     }
 
     // Load the configured page of the configured book (printed page + book offset).
-    // Stories may also reference a page so Aline can weave learning content in.
+    // Only the teaching turn needs it — greeting/day_check and the wrap-up don't.
     let pageContent: string | null = null;
-    if (phase === "content" && session.book && session.page) {
+    if (phase === "content" && !wrapUp && session.book && session.page) {
       pageContent = await loadPageContent(supabase, session.book, session.page);
     }
 
@@ -108,10 +108,7 @@ export const chat = createServerFn({ method: "POST" })
         role: "system" as const,
         content: buildSystemPrompt(session, phase, pageContent, wrapUp),
       },
-      ...past.map((m) => ({
-        role: (m.sender === "child" ? "user" : "assistant") as "user" | "assistant",
-        content: m.text,
-      })),
+      ...compactHistory(past),
       ...(data.userMessage.trim()
         ? [{ role: "user" as const, content: data.userMessage.trim() }]
         : [{ role: "user" as const, content: "شروع کن." }]),
