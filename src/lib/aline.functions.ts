@@ -125,7 +125,16 @@ export const chat = createServerFn({ method: "POST" })
     const messages = [
       {
         role: "system" as const,
-        content: buildSystemPrompt(session, phase, pageContent, wrapUp, shortAnswer),
+        content: buildSystemPrompt(
+          session,
+          phase,
+          pageContent,
+          wrapUp,
+          shortAnswer,
+          storyTold,
+          distress,
+        ),
+
       },
       ...compactHistory(past),
       ...(data.userMessage.trim()
