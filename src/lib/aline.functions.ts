@@ -34,12 +34,15 @@ const ChatInput = z.object({
   finish: z.boolean().default(false),
 });
 
-/** Short/disengaged answers ("نمی‌دونم", "نه", "باشه"…) hint the child is done. */
-const DISENGAGED = ["نمیدونم", "نمی‌دونم", "نه", "آره", "باشه", "هیچی", "خسته", "بسه", "تمام", "تموم"];
-function isDisengaged(text: string) {
+/**
+ * Only an explicit request to stop ends the session early. Short answers from a
+ * 7-year-old ("اره", "نه") are normal and must never end the session.
+ */
+const STOP_PHRASES = ["تمام", "تموم", "بسه", "دیگه بسه", "خسته شدم", "خداحافظ", "بای", "کافیه", "نمیخوام ادامه"];
+function wantsToStop(text: string) {
   const t = text.trim();
   if (!t) return false;
-  return t.length <= 4 || DISENGAGED.includes(t);
+  return STOP_PHRASES.some((p) => t === p || t.includes(p));
 }
 
 
