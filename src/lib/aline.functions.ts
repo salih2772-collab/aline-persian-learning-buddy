@@ -39,6 +39,7 @@ export const chat = createServerFn({ method: "POST" })
     const { createServerSupabase } = await import("./supabase.server");
     const { buildSystemPrompt, nextPhase } = await import("./aline-prompt.server");
     const { loadPageContent } = await import("./book-page.server");
+    const { AI_MODEL } = await import("./ai-model.server");
     const supabase = createServerSupabase();
 
     const { data: session, error: sErr } = await supabase
@@ -98,24 +99,42 @@ export const chat = createServerFn({ method: "POST" })
         : [{ role: "user" as const, content: "شروع کن." }]),
     ];
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.8,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages,
+          response_format: { type: "json_object" },
+          temperature: 0.8,
+        }),
+        // Never let the child stare at a spinner forever.
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err) {
+      console.error("[aline.chat] request failed", {
+        sessionId: data.sessionId,
+        phase,
+        error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+      });
+      throw new Error("الین الان نتونست جواب بده، دوباره امتحان کن.");
+    }
 
     if (!res.ok) {
       const body = await res.text();
+      console.error("[aline.chat] AI error response", {
+        sessionId: data.sessionId,
+        phase,
+        status: res.status,
+        body: body.slice(0, 500),
+      });
       if (res.status === 429) throw new Error("کمی شلوغ است، چند لحظه بعد دوباره امتحان کن.");
-      throw new Error(`خطای سرویس هوش مصنوعی (${res.status}): ${body.slice(0, 200)}`);
+      throw new Error("الین الان نتونست جواب بده، دوباره امتحان کن.");
     }
 
     const payload = (await res.json()) as {
@@ -184,19 +203,38 @@ export const generateQuiz = createServerFn({ method: "POST" })
         ? await loadPageContent(supabase, session.book, session.page)
         : null;
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages: [{ role: "system", content: buildQuizPrompt(session, contentText, pageContent) }],
-        response_format: { type: "json_object" },
-        temperature: 0.4,
-      }),
-    });
+    const { AI_MODEL } = await import("./ai-model.server");
+    let res: Response;
+    try {
+      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: [
+            { role: "system", content: buildQuizPrompt(session, contentText, pageContent) },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.4,
+        }),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err) {
+      console.error("[aline.generateQuiz] request failed", {
+        sessionId: data.sessionId,
+        error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+      });
+      throw new Error("ساخت آزمون ممکن نشد، دوباره امتحان کن.");
+    }
     if (!res.ok) {
+      const body = await res.text();
+      console.error("[aline.generateQuiz] AI error response", {
+        sessionId: data.sessionId,
+        status: res.status,
+        body: body.slice(0, 500),
+      });
       if (res.status === 429) throw new Error("کمی شلوغ است، چند لحظه بعد دوباره امتحان کن.");
-      throw new Error(`ساخت آزمون ممکن نشد (${res.status}).`);
+      throw new Error("ساخت آزمون ممکن نشد، دوباره امتحان کن.");
     }
 
     const payload = (await res.json()) as { choices?: { message?: { content?: string } }[] };

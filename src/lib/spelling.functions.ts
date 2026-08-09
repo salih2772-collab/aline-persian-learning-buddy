@@ -29,20 +29,34 @@ export const analyzeSpelling = createServerFn({ method: "POST" })
       .eq("id", data.sessionId)
       .single();
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages: [
-          { role: "system", content: buildSpellingPrompt() },
-          { role: "user", content: text },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0,
-      }),
-    });
-    if (!res.ok) return { stored: 0 };
+    const { AI_MODEL } = await import("./ai-model.server");
+    let res: Response;
+    try {
+      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: [
+            { role: "system", content: buildSpellingPrompt() },
+            { role: "user", content: text },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0,
+        }),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (err) {
+      console.error("[spelling.analyze] request failed", {
+        sessionId: data.sessionId,
+        error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+      });
+      return { stored: 0 };
+    }
+    if (!res.ok) {
+      console.error("[spelling.analyze] AI error response", { status: res.status });
+      return { stored: 0 };
+    }
 
     const payload = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const issues = parseSpellingIssues(payload.choices?.[0]?.message?.content ?? "");
