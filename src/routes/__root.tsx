@@ -124,6 +124,13 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // Apply saved app preferences (language/direction, theme, font size) after hydration.
+  useEffect(() => {
+    void import("../lib/preferences").then(({ applyPreferences, loadPreferences }) => {
+      applyPreferences(loadPreferences());
+    });
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
