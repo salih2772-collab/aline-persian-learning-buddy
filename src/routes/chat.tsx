@@ -295,22 +295,50 @@ function ChatPage() {
           </div>
         ) : null}
 
-        {stage === "moodReason" || stage === "talk" || stage === "free" ? (
-          <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="جوابت را بنویس..."
-              className="min-w-0 flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-            <button
-              type="submit"
-              disabled={thinking}
-              className="shrink-0 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+        {stage === "done" ? (
+          <div className="card-soft mt-4 flex flex-col items-center gap-3 p-6 text-center">
+            <img src={alineMascot} alt="" width={512} height={512} className="animate-float h-24 w-24" />
+            <p className="text-lg font-black">آفرین {settings.childName || "دوست خوبم"}! 🌟</p>
+            <p className="text-balance-fa text-sm leading-7 text-muted-foreground">
+              امروز با هم {settings.contentType === "lesson" ? "درس خوندیم" : "یک داستان قشنگ خوندیم"}، حرف زدیم
+              {result ? ` و در آزمون ${toFa(result.correct)} از ${toFa(result.total)} سؤال رو درست جواب دادی` : ""}.
+              فردا هم منتظرتم! 💛
+            </p>
+            <a
+              href="/"
+              className="rounded-full bg-primary px-7 py-3 text-base font-black text-primary-foreground transition-opacity hover:opacity-90"
             >
-              بفرست
+              خداحافظ الین 👋
+            </a>
+          </div>
+        ) : null}
+
+        {stage === "moodReason" || stage === "talk" || stage === "free" ? (
+          <>
+            <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="جوابت را بنویس..."
+                className="min-w-0 flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                type="submit"
+                disabled={thinking}
+                className="shrink-0 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+              >
+                بفرست
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={finishNow}
+              disabled={thinking}
+              className="mt-2 self-center rounded-full border border-border bg-card px-5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+            >
+              تمام شد ✋
             </button>
-          </form>
+          </>
         ) : null}
       </main>
     </div>
