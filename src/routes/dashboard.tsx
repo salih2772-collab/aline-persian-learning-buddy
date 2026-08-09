@@ -56,7 +56,6 @@ type MoodRow = {
   id: string;
   student_name: string;
   mood_sticker: string | null;
-  mood_reason: string | null;
   created_at: string;
 };
 
@@ -69,7 +68,8 @@ function DashboardPage() {
     setQuizzes(loadQuizResults());
     void supabase
       .from("sessions")
-      .select("id, student_name, mood_sticker, mood_reason, created_at")
+      // mood_reason is intentionally NOT fetched: the child's own words stay private.
+      .select("id, student_name, mood_sticker, created_at")
       .not("mood_sticker", "is", null)
       .order("created_at", { ascending: false })
       .limit(8)
