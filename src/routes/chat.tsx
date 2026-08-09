@@ -58,6 +58,15 @@ function ChatPage() {
   const startSession = useServerFn(createSession);
   const sendChat = useServerFn(chat);
   const makeQuiz = useServerFn(generateQuiz);
+  const checkSpelling = useServerFn(analyzeSpelling);
+
+  // Silent: results are never shown to the child, only stored for parents.
+  function silentSpellingCheck(id: string, text: string) {
+    if (!settings.spellingAnalysis || !text.trim()) return;
+    void checkSpelling({ data: { sessionId: id, text } }).catch(() => {});
+  }
+
+
 
   useEffect(() => {
     setSettings(loadSettings());
