@@ -50,6 +50,7 @@ export function parseSpellingIssues(raw: string): SpellingIssue[] {
         correct_form: i.correct_form.trim().slice(0, 60),
         error_type: i.error_type,
       }))
+      .filter((i) => i.correct_form.length > 0 && i.correct_form !== i.written_form)
       .slice(0, 10);
   } catch {
     return [];
