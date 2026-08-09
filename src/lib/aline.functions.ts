@@ -39,6 +39,7 @@ export const chat = createServerFn({ method: "POST" })
     const { createServerSupabase } = await import("./supabase.server");
     const { buildSystemPrompt, nextPhase } = await import("./aline-prompt.server");
     const { loadPageContent } = await import("./book-page.server");
+    const { AI_MODEL } = await import("./ai-model.server");
     const supabase = createServerSupabase();
 
     const { data: session, error: sErr } = await supabase
