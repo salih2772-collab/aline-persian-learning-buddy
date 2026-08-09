@@ -42,12 +42,12 @@ export function QuizCard({ questions, onFinish }: Props) {
           : "اشکالی ندارد، با هم دوباره مرور می‌کنیم. 💛";
     return (
       <div className="card-soft p-5 text-center">
-        <div className="text-3xl">🎉</div>
-        <p className="mt-2 text-2xl font-black">{toFa(score)}٪</p>
+        <div className="text-5xl">🎉</div>
+        <p className="mt-2 text-4xl font-black">{toFa(score)}٪</p>
         <p className="mt-1 text-sm text-muted-foreground">
           {toFa(correctCount)} از {toFa(total)} پاسخ درست
         </p>
-        <p className="mt-3 text-sm font-bold">{message}</p>
+        <p className="mt-3 text-lg font-black">{message}</p>
       </div>
     );
   }
@@ -60,8 +60,8 @@ export function QuizCard({ questions, onFinish }: Props) {
           سؤال {toFa(index + 1)} از {toFa(total)}
         </span>
       </div>
-      <p className="mb-3 text-base font-bold leading-8">{q.question}</p>
-      <div className="grid gap-2">
+      <p className="mb-4 text-xl font-black leading-9">{q.question}</p>
+      <div className="grid gap-3">
         {q.options.map((opt, i) => {
           const isPicked = picked === i;
           const isCorrect = i === q.correct;
@@ -73,7 +73,7 @@ export function QuizCard({ questions, onFinish }: Props) {
               key={i}
               onClick={() => choose(i)}
               disabled={picked !== null}
-              className={`rounded-2xl border px-4 py-3 text-right text-sm font-bold transition-colors ${cls}`}
+              className={`kid-target tap-bounce rounded-3xl border-2 px-5 py-4 text-right text-lg font-bold transition-colors ${cls}`}
             >
               {opt}
             </button>
@@ -81,7 +81,7 @@ export function QuizCard({ questions, onFinish }: Props) {
         })}
       </div>
       {picked !== null ? (
-        <p className="mt-3 text-center text-sm font-bold">
+        <p className="mt-4 text-center text-lg font-black">
           {picked === q.correct ? "آفرین! درست بود ✅" : "نزدیک بود؛ جواب درست را ببین 💡"}
         </p>
       ) : null}

@@ -58,19 +58,19 @@
 
 :root {
   --radius: 1.1rem;
-  --background: oklch(0.983 0.014 88);
+  --background: oklch(0.985 0.024 84);
   --foreground: oklch(0.28 0.035 55);
   --card: oklch(1 0.005 90);
   --card-foreground: oklch(0.28 0.035 55);
   --popover: oklch(1 0.005 90);
   --popover-foreground: oklch(0.28 0.035 55);
-  --primary: oklch(0.62 0.105 195);
+  --primary: oklch(0.635 0.125 198);
   --primary-foreground: oklch(0.99 0.01 195);
-  --secondary: oklch(0.945 0.032 85);
+  --secondary: oklch(0.945 0.045 82);
   --secondary-foreground: oklch(0.34 0.05 55);
   --muted: oklch(0.951 0.021 88);
   --muted-foreground: oklch(0.52 0.035 60);
-  --accent: oklch(0.82 0.145 72);
+  --accent: oklch(0.845 0.16 74);
   --accent-foreground: oklch(0.27 0.06 55);
   --destructive: oklch(0.6 0.19 25);
   --destructive-foreground: oklch(0.99 0.01 25);
@@ -175,4 +175,33 @@
 
 @utility thinking-dot {
   animation: aline-dot 1.2s infinite ease-in-out;
+}
+
+@keyframes aline-tap {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.94);
+  }
+  75% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Gentle bounce feedback so a child sees the tap registered. */
+@utility tap-bounce {
+  transition: transform 0.15s ease-out;
+  &:active {
+    animation: aline-tap 0.28s ease-out;
+  }
+}
+
+/* Minimum comfortable target size for small hands. */
+@utility kid-target {
+  min-height: 60px;
+  min-width: 60px;
 }

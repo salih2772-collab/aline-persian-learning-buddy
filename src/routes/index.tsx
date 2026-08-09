@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import alineMascot from "@/assets/aline.png";
+import childCard from "@/assets/role-child.jpg";
+import parentCard from "@/assets/role-parent.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -36,31 +38,45 @@ function Index() {
         </p>
       </div>
 
-      <div className="grid w-full gap-4 sm:grid-cols-2">
+      <div className="grid w-full gap-5 sm:grid-cols-2">
         <Link
           to="/chat"
-          className="card-soft group flex flex-col items-center gap-3 p-7 text-center transition-transform hover:-translate-y-1 hover:shadow-pop"
+          aria-label="من کودک هستم — شروع گفت‌وگو با الین"
+          className="card-soft tap-bounce group flex flex-col items-center gap-4 overflow-hidden p-4 text-center hover:shadow-pop"
         >
-          <span className="grid h-16 w-16 place-items-center rounded-full bg-primary/15 text-3xl">🧒</span>
-          <span className="text-xl font-black">من کودک هستم</span>
-          <span className="text-sm text-muted-foreground">بریم با الین حرف بزنیم!</span>
-          <span className="mt-1 rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground">
-            شروع گفت‌وگو
+          <img
+            src={childCard}
+            alt="کودکی با کوله‌پشتی که دست تکان می‌دهد"
+            width={816}
+            height={816}
+            className="h-[210px] w-full rounded-3xl bg-card object-contain sm:h-[240px]"
+          />
+          <span className="text-3xl font-black leading-tight">من کودک هستم</span>
+          <span className="kid-target flex w-full items-center justify-center rounded-full bg-primary px-6 text-xl font-black text-primary-foreground">
+            بریم حرف بزنیم!
           </span>
         </Link>
 
         <Link
           to="/dashboard"
-          className="card-soft group flex flex-col items-center gap-3 p-7 text-center transition-transform hover:-translate-y-1 hover:shadow-pop"
+          aria-label="والد یا معلم — تنظیم جلسه و دیدن پیشرفت"
+          className="card-soft tap-bounce group flex flex-col items-center gap-4 overflow-hidden p-4 text-center hover:shadow-pop"
         >
-          <span className="grid h-16 w-16 place-items-center rounded-full bg-accent/25 text-3xl">👩‍🏫</span>
-          <span className="text-xl font-black">والد یا معلم</span>
-          <span className="text-sm text-muted-foreground">تنظیم جلسه و دیدن پیشرفت</span>
-          <span className="mt-1 rounded-full bg-accent px-5 py-2 text-sm font-bold text-accent-foreground">
-            ورود به بخش بزرگ‌ترها
+          <img
+            src={parentCard}
+            alt="بزرگ‌تری با دفتر گزارش و فنجان چای"
+            width={816}
+            height={816}
+            loading="lazy"
+            className="h-[210px] w-full rounded-3xl bg-card object-contain sm:h-[240px]"
+          />
+          <span className="text-3xl font-black leading-tight">والد یا معلم</span>
+          <span className="kid-target flex w-full items-center justify-center rounded-full bg-accent px-6 text-xl font-black text-accent-foreground">
+            بخش بزرگ‌ترها
           </span>
         </Link>
       </div>
+
 
     </main>
   );
