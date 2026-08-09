@@ -142,6 +142,44 @@ export type Database = {
         }
         Relationships: []
       }
+      spelling_errors: {
+        Row: {
+          child_name: string
+          correct_form: string
+          created_at: string
+          error_type: string
+          id: string
+          session_id: string
+          written_form: string
+        }
+        Insert: {
+          child_name?: string
+          correct_form: string
+          created_at?: string
+          error_type: string
+          id?: string
+          session_id: string
+          written_form: string
+        }
+        Update: {
+          child_name?: string
+          correct_form?: string
+          created_at?: string
+          error_type?: string
+          id?: string
+          session_id?: string
+          written_form?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spelling_errors_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

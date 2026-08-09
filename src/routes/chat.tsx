@@ -5,6 +5,8 @@ import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
 import { QuizCard } from "@/components/quiz-card";
 import { chat, createSession, generateQuiz } from "@/lib/aline.functions";
+import { analyzeSpelling } from "@/lib/spelling.functions";
+
 import {
   DEFAULT_SETTINGS,
   MOODS,
@@ -56,6 +58,15 @@ function ChatPage() {
   const startSession = useServerFn(createSession);
   const sendChat = useServerFn(chat);
   const makeQuiz = useServerFn(generateQuiz);
+  const checkSpelling = useServerFn(analyzeSpelling);
+
+  // Silent: results are never shown to the child, only stored for parents.
+  function silentSpellingCheck(id: string, text: string) {
+    if (!settings.spellingAnalysis || !text.trim()) return;
+    void checkSpelling({ data: { sessionId: id, text } }).catch(() => {});
+  }
+
+
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -134,6 +145,11 @@ function ChatPage() {
     if (!text || thinking || !sessionId) return;
     setInput("");
     push("child", text);
+    silentSpellingCheck(sessionId, text);
+
+
+
+
 
     if (stage === "moodReason" && mood) {
       const phase = await talk(sessionId, text, mood, text);
