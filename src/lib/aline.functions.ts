@@ -50,7 +50,9 @@ export const chat = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInput.parse(input))
   .handler(async ({ data }) => {
     const { createServerSupabase } = await import("./supabase.server");
-    const { buildSystemPrompt, nextPhase, compactHistory } = await import("./aline-prompt.server");
+    const { buildSystemPrompt, nextPhase, compactHistory, stripMarkdown, isDistressMessage } =
+      await import("./aline-prompt.server");
+
     const { loadPageContent } = await import("./book-page.server");
     const { callAi } = await import("./ai-model.server");
     const supabase = createServerSupabase();
