@@ -46,11 +46,10 @@ function isDisengaged(text: string) {
 export const chat = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInput.parse(input))
   .handler(async ({ data }) => {
-    const apiKey = process.env["OPENROUTER_API_KEY"];
     const { createServerSupabase } = await import("./supabase.server");
     const { buildSystemPrompt, nextPhase } = await import("./aline-prompt.server");
     const { loadPageContent } = await import("./book-page.server");
-    const { AI_MODEL } = await import("./ai-model.server");
+    const { callAi } = await import("./ai-model.server");
     const supabase = createServerSupabase();
 
     const { data: session, error: sErr } = await supabase
@@ -123,22 +122,7 @@ export const chat = createServerFn({ method: "POST" })
 
     let res: Response;
     try {
-      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: AI_MODEL,
-          messages,
-          response_format: { type: "json_object" },
-          temperature: 0.8,
-          max_tokens: 900,
-        }),
-        // Never let the child stare at a spinner forever.
-        signal: AbortSignal.timeout(30_000),
-      });
+      res = await callAi(messages, { temperature: 0.8 });
     } catch (err) {
       console.error("[aline.chat] request failed", {
         sessionId: data.sessionId,
@@ -227,8 +211,6 @@ const QuizInput = z.object({ sessionId: z.string().uuid() });
 export const generateQuiz = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => QuizInput.parse(input))
   .handler(async ({ data }) => {
-    const apiKey = process.env["OPENROUTER_API_KEY"];
-    if (!apiKey) throw new Error("کلید OpenRouter تنظیم نشده است.");
     const { createServerSupabase } = await import("./supabase.server");
     const { buildQuizPrompt } = await import("./aline-prompt.server");
     const { loadPageContent } = await import("./book-page.server");
@@ -259,23 +241,13 @@ export const generateQuiz = createServerFn({ method: "POST" })
         ? await loadPageContent(supabase, session.book, session.page)
         : null;
 
-    const { AI_MODEL } = await import("./ai-model.server");
+    const { callAi } = await import("./ai-model.server");
     let res: Response;
     try {
-      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: AI_MODEL,
-          messages: [
-            { role: "system", content: buildQuizPrompt(session, contentText, pageContent) },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.4,
-          max_tokens: 900,
-        }),
-        signal: AbortSignal.timeout(30_000),
-      });
+      res = await callAi(
+        [{ role: "system", content: buildQuizPrompt(session, contentText, pageContent) }],
+        { temperature: 0.4 },
+      );
     } catch (err) {
       console.error("[aline.generateQuiz] request failed", {
         sessionId: data.sessionId,
