@@ -104,6 +104,7 @@ export type Database = {
         Row: {
           book: string | null
           chapter: string | null
+          completed_at: string | null
           content_type: string
           created_at: string
           id: string
@@ -111,12 +112,15 @@ export type Database = {
           mood_sticker: string | null
           moral_topic: string | null
           page: string | null
+          quiz_correct: number | null
+          quiz_total: number | null
           status: string
           student_name: string
         }
         Insert: {
           book?: string | null
           chapter?: string | null
+          completed_at?: string | null
           content_type?: string
           created_at?: string
           id?: string
@@ -124,12 +128,15 @@ export type Database = {
           mood_sticker?: string | null
           moral_topic?: string | null
           page?: string | null
+          quiz_correct?: number | null
+          quiz_total?: number | null
           status?: string
           student_name?: string
         }
         Update: {
           book?: string | null
           chapter?: string | null
+          completed_at?: string | null
           content_type?: string
           created_at?: string
           id?: string
@@ -137,6 +144,8 @@ export type Database = {
           mood_sticker?: string | null
           moral_topic?: string | null
           page?: string | null
+          quiz_correct?: number | null
+          quiz_total?: number | null
           status?: string
           student_name?: string
         }

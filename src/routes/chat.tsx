@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
 import { QuizCard } from "@/components/quiz-card";
-import { chat, createSession, generateQuiz } from "@/lib/aline.functions";
+import { chat, completeSession, createSession, generateQuiz } from "@/lib/aline.functions";
 import { analyzeSpelling } from "@/lib/spelling.functions";
 
 import {
@@ -12,6 +12,7 @@ import {
   MOODS,
   loadSettings,
   saveQuizResult,
+  toFa,
   type Mood,
   type QuizQuestion,
   type SessionSettings,
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 type Msg = { id: number; from: "aline" | "child"; text: string };
-type Stage = "start" | "mood" | "moodReason" | "talk" | "quiz" | "free";
+type Stage = "start" | "mood" | "moodReason" | "talk" | "quiz" | "free" | "done";
 
 let msgId = 0;
 const nextId = () => ++msgId;
@@ -54,11 +55,13 @@ function ChatPage() {
     mood: Mood;
   } | null>(null);
   const [mood, setMood] = useState<Mood | null>(null);
+  const [result, setResult] = useState<{ correct: number; total: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const startSession = useServerFn(createSession);
   const sendChat = useServerFn(chat);
   const makeQuiz = useServerFn(generateQuiz);
+  const endSession = useServerFn(completeSession);
   const checkSpelling = useServerFn(analyzeSpelling);
 
   // Silent: results are never shown to the child, only stored for parents.
@@ -101,12 +104,15 @@ function ChatPage() {
     userMessage: string,
     moodSticker: string | null = null,
     moodReason: string | null = null,
+    finish = false,
   ) {
     setThinking(true);
     try {
-      const reply = await sendChat({ data: { sessionId: id, userMessage, moodSticker, moodReason } });
+      const reply = await sendChat({
+        data: { sessionId: id, userMessage, moodSticker, moodReason, finish },
+      });
       push("aline", [reply.message, reply.question].filter(Boolean).join("\n\n"));
-      return reply.phase;
+      return reply;
     } finally {
       setThinking(false);
     }
@@ -133,8 +139,8 @@ function ChatPage() {
         setSessionId(id);
         setThinking(false);
       }
-      const phase = await talk(id, "سلام الین!");
-      if (phase) setStage("mood");
+      const reply = await talk(id, "سلام الین!");
+      if (reply.phase) setStage("mood");
     });
   }
 
@@ -148,6 +154,33 @@ function ChatPage() {
     push("aline", `${m.emoji} ممنون که گفتی!\n\nچرا امروز این حس رو داری؟ برام تعریف کن 💛`);
   }
 
+  /** Builds the end-of-session quiz; falls back to the closing screen if it fails. */
+  async function startQuiz(id: string) {
+    setThinking(true);
+    try {
+      const quiz = await makeQuiz({ data: { sessionId: id } });
+      if (quiz.questions.length === 0) throw new Error("empty");
+      setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood: mood ?? "happy" });
+      setStage("quiz");
+    } catch {
+      // The quiz is optional — never block the child on it.
+      await endSession({ data: { sessionId: id, correct: null, total: null } }).catch(() => {});
+      setStage("done");
+    } finally {
+      setThinking(false);
+    }
+  }
+
+  /** "تمام شد" — the child can end the session at any moment. */
+  async function finishNow() {
+    if (!sessionId || thinking) return;
+    push("child", "تمام شد ✋");
+    await run(async () => {
+      await talk(sessionId, "دیگه کافیه، تمام شد.", null, null, true);
+      await startQuiz(sessionId);
+    });
+  }
+
   async function sendFree(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
@@ -157,7 +190,6 @@ function ChatPage() {
     silentSpellingCheck(sessionId, text);
 
     const wasMoodReason = stage === "moodReason";
-    const wasTalk = stage === "talk";
 
     await run(async () => {
       if (wasMoodReason && mood) {
@@ -166,25 +198,12 @@ function ChatPage() {
         return;
       }
 
-      const phase = await talk(sessionId, text);
-      if (phase === "content" && wasTalk && mood) {
-        // Build the quiz from the story/lesson Aline just gave.
-        setThinking(true);
-        try {
-          const quiz = await makeQuiz({ data: { sessionId } });
-          setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood });
-          setStage("quiz");
-        } catch {
-          // The quiz is optional — never block the child on it.
-          setStage("free");
-        } finally {
-          setThinking(false);
-        }
-      }
+      const reply = await talk(sessionId, text);
+      if (reply.wrapUp) await startQuiz(sessionId);
     });
   }
 
-  function finishQuiz(correct: number, total: number) {
+  async function finishQuiz(correct: number, total: number) {
     if (pending) {
       saveQuizResult({
         topic: pending.topic,
@@ -195,8 +214,13 @@ function ChatPage() {
         mood: pending.mood,
       });
     }
-    setStage("free");
+    setResult({ correct, total });
+    if (sessionId) {
+      await endSession({ data: { sessionId, correct, total } }).catch(() => {});
+    }
+    setStage("done");
   }
+
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -272,22 +296,50 @@ function ChatPage() {
           </div>
         ) : null}
 
-        {stage === "moodReason" || stage === "talk" || stage === "free" ? (
-          <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="جوابت را بنویس..."
-              className="min-w-0 flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-            <button
-              type="submit"
-              disabled={thinking}
-              className="shrink-0 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+        {stage === "done" ? (
+          <div className="card-soft mt-4 flex flex-col items-center gap-3 p-6 text-center">
+            <img src={alineMascot} alt="" width={512} height={512} className="animate-float h-24 w-24" />
+            <p className="text-lg font-black">آفرین {settings.childName || "دوست خوبم"}! 🌟</p>
+            <p className="text-balance-fa text-sm leading-7 text-muted-foreground">
+              امروز با هم {settings.contentType === "lesson" ? "درس خوندیم" : "یک داستان قشنگ خوندیم"}، حرف زدیم
+              {result ? ` و در آزمون ${toFa(result.correct)} از ${toFa(result.total)} سؤال رو درست جواب دادی` : ""}.
+              فردا هم منتظرتم! 💛
+            </p>
+            <a
+              href="/"
+              className="rounded-full bg-primary px-7 py-3 text-base font-black text-primary-foreground transition-opacity hover:opacity-90"
             >
-              بفرست
+              خداحافظ الین 👋
+            </a>
+          </div>
+        ) : null}
+
+        {stage === "moodReason" || stage === "talk" || stage === "free" ? (
+          <>
+            <form onSubmit={sendFree} className="mt-4 flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="جوابت را بنویس..."
+                className="min-w-0 flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                type="submit"
+                disabled={thinking}
+                className="shrink-0 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+              >
+                بفرست
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={finishNow}
+              disabled={thinking}
+              className="mt-2 self-center rounded-full border border-border bg-card px-5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+            >
+              تمام شد ✋
             </button>
-          </form>
+          </>
         ) : null}
       </main>
     </div>

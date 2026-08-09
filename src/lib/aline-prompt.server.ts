@@ -18,7 +18,12 @@ export function isGentleMood(mood: string | null | undefined) {
   return GENTLE_MOODS.some((m) => mood.includes(m));
 }
 
-export function buildSystemPrompt(session: SessionRow, phase: Phase, pageContent: string | null) {
+export function buildSystemPrompt(
+  session: SessionRow,
+  phase: Phase,
+  pageContent: string | null,
+  wrapUp = false,
+) {
   const name = session.student_name?.trim() || "دوست خوبم";
   const gentle = isGentleMood(session.mood_sticker);
   const isStory = session.content_type !== "lesson";
@@ -76,9 +81,19 @@ export function buildSystemPrompt(session: SessionRow, phase: Phase, pageContent
     gentle
       ? "کودک حال خوبی ندارد: لحن‌ات را آرام‌تر، دلگرم‌کننده‌تر و مهربان‌تر کن، اول احساسش را تأیید کن و بعد ادامه بده."
       : "",
-    phaseGuide[phase],
+    wrapUp ? "" : phaseGuide[phase],
+    wrapUp
+      ? [
+          "مرحلهٔ فعلی: «پایان جلسه». دیگر هیچ سؤال جدیدی نپرس و گفت‌وگو را ادامه نده.",
+          "در دو یا سه جملهٔ کوتاه و گرم، جمع‌بندی کن که امروز با هم چه کار کردیم، کودک را تشویق کن و خداحافظی مهربانی بکن.",
+          'مقدار "question" را حتماً رشتهٔ خالی "" بگذار.',
+        ].join(" ")
+      : "",
     pageContent
-      ? `متن صفحهٔ کتاب (کتاب: ${session.book} — صفحه: ${session.page}):\n"""\n${pageContent.slice(0, 6000)}\n"""`
+      ? [
+          `متن صفحهٔ کتاب (کتاب: ${session.book} — صفحه: ${session.page}):\n"""\n${pageContent.slice(0, 6000)}\n"""`,
+          "توجه: اگر متن صفحه فهرست، جدول یا مجموعه‌ای از کلمه‌ها و عبارت‌های جداست، هر مورد را کاملاً جدا در نظر بگیر و هیچ‌وقت دو مورد جدا را به هم نچسبان تا یک عبارت تازه بسازی. عبارت قرآنی یا هر عبارت دیگری را از خودت ترکیب یا تکمیل نکن.",
+        ].join("\n\n")
       : phase === "content" && !isStory
         ? "متن این صفحه در پایگاه داده موجود نیست؛ مؤدبانه بگو که هنوز محتوای این صفحه را نداری و پیشنهاد بده با هم یک داستان بخوانید."
         : "",
@@ -96,6 +111,7 @@ export function buildQuizPrompt(session: SessionRow, contentText: string, pageCo
     "زبان فارسی ساده و کودکانه؛ سؤال‌ها کوتاه و گزینه‌ها کوتاه باشند. فقط یک گزینه درست باشد.",
     `محتوایی که گفته شد:\n"""\n${contentText.slice(0, 6000)}\n"""`,
     pageContent ? `متن صفحهٔ کتاب مرتبط:\n"""\n${pageContent.slice(0, 3000)}\n"""` : "",
+    "اگر متن صفحه فهرست یا مجموعه‌ای از کلمه‌ها و عبارت‌های جداست، هر مورد را جدا در نظر بگیر و دو مورد جدا را به هم نچسبان تا عبارت تازه بسازی.",
     'خروجی فقط JSON معتبر: {"questions":[{"question":"...","options":["...","...","..."],"correct":0}]}',
   ]
     .filter(Boolean)

@@ -59,10 +59,24 @@ type MoodRow = {
   created_at: string;
 };
 
+type DoneRow = {
+  id: string;
+  content_type: string;
+  moral_topic: string | null;
+  book: string | null;
+  page: string | null;
+  mood_sticker: string | null;
+  quiz_correct: number | null;
+  quiz_total: number | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
 function DashboardPage() {
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
   const [moodRows, setMoodRows] = useState<MoodRow[]>([]);
   const [spelling, setSpelling] = useState<SpellingRow[]>([]);
+  const [doneRows, setDoneRows] = useState<DoneRow[]>([]);
 
   useEffect(() => {
     setQuizzes(loadQuizResults());
@@ -74,6 +88,15 @@ function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => setMoodRows((data as MoodRow[] | null) ?? []));
+    void supabase
+      .from("sessions")
+      .select(
+        "id, content_type, moral_topic, book, page, mood_sticker, quiz_correct, quiz_total, completed_at, created_at",
+      )
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setDoneRows((data as DoneRow[] | null) ?? []));
     void supabase
       .from("spelling_errors")
       .select("id, child_name, written_form, correct_form, error_type, created_at")
@@ -99,16 +122,40 @@ function DashboardPage() {
     score: q.score,
   }));
 
+  const finishedSessions = doneRows.map((r) => ({
+    id: `s-${r.id}`,
+    date: formatFaDate(new Date(r.completed_at ?? r.created_at).getTime()),
+    type: r.content_type === "lesson" ? "درس" : "داستان",
+    topic:
+      r.content_type === "lesson"
+        ? `${r.book ?? "درس"}${r.page ? ` — صفحهٔ ${toFa(r.page)}` : ""}`
+        : (r.moral_topic ?? "داستان اخلاقی"),
+    mood: r.mood_sticker
+      ? (MOODS.find((m) => m.id === r.mood_sticker)?.emoji ?? r.mood_sticker)
+      : "🙂",
+    score:
+      r.quiz_total && r.quiz_total > 0
+        ? Math.round(((r.quiz_correct ?? 0) / r.quiz_total) * 100)
+        : null,
+    done: true,
+  }));
+
   const realSessions = [...quizzes].reverse().map((q) => ({
     id: `q-${q.id}`,
     date: formatFaDate(q.at),
     type: q.type,
     topic: q.topic,
     mood: MOODS.find((m) => m.id === q.mood)?.emoji ?? "🙂",
-    score: q.score,
+    score: q.score as number | null,
+    done: false,
   }));
-  const mockSessions = RECENT_SESSIONS.map((s) => ({ ...s, id: `m-${s.id}` }));
-  const sessions = [...realSessions, ...mockSessions].slice(0, 8);
+  const mockSessions = RECENT_SESSIONS.map((s) => ({
+    ...s,
+    id: `m-${s.id}`,
+    score: s.score as number | null,
+    done: false,
+  }));
+  const sessions = [...finishedSessions, ...realSessions, ...mockSessions].slice(0, 8);
 
   return (
     <div className="min-h-screen pb-16">
@@ -398,10 +445,11 @@ function DashboardPage() {
                   <span className="block truncate font-bold">{s.topic}</span>
                   <span className="block text-xs text-muted-foreground">
                     {s.date} · {s.type}
+                    {s.done ? " · تمام‌شده ✅" : ""}
                   </span>
                 </span>
                 <span className="shrink-0 rounded-full bg-success/15 px-3 py-1 text-xs font-black text-success">
-                  {toFa(s.score)}٪
+                  {s.score === null ? "بدون آزمون" : `${toFa(s.score)}٪`}
                 </span>
               </li>
             ))}

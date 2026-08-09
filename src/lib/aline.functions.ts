@@ -30,7 +30,18 @@ const ChatInput = z.object({
   userMessage: z.string().default(""),
   moodSticker: z.string().nullable().default(null),
   moodReason: z.string().nullable().default(null),
+  /** Child tapped "تمام شد" — Aline must wrap up now. */
+  finish: z.boolean().default(false),
 });
+
+/** Short/disengaged answers ("نمی‌دونم", "نه", "باشه"…) hint the child is done. */
+const DISENGAGED = ["نمیدونم", "نمی‌دونم", "نه", "آره", "باشه", "هیچی", "خسته", "بسه", "تمام", "تموم"];
+function isDisengaged(text: string) {
+  const t = text.trim();
+  if (!t) return false;
+  return t.length <= 4 || DISENGAGED.includes(t);
+}
+
 
 export const chat = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInput.parse(input))
@@ -58,6 +69,14 @@ export const chat = createServerFn({ method: "POST" })
     const past = history ?? [];
     const lastAline = [...past].reverse().find((m) => m.sender === "aline");
     const phase: Phase = !lastAline ? "greeting" : nextPhase(lastAline.phase as Phase);
+
+    // Decide whether this reply should end the session instead of asking again.
+    const contentTurns = past.filter((m) => m.phase === "content" && m.sender === "child").length;
+    const wrapUp =
+      data.finish ||
+      (phase === "content" &&
+        (contentTurns >= 6 || (contentTurns >= 2 && isDisengaged(data.userMessage))));
+
 
     // Save the mood sticker and the reason the child gave for it.
     const moodUpdate: { mood_sticker?: string; mood_reason?: string } = {};
@@ -89,7 +108,10 @@ export const chat = createServerFn({ method: "POST" })
     }
 
     const messages = [
-      { role: "system" as const, content: buildSystemPrompt(session, phase, pageContent) },
+      {
+        role: "system" as const,
+        content: buildSystemPrompt(session, phase, pageContent, wrapUp),
+      },
       ...past.map((m) => ({
         role: (m.sender === "child" ? "user" : "assistant") as "user" | "assistant",
         content: m.text,
@@ -154,6 +176,8 @@ export const chat = createServerFn({ method: "POST" })
       // keep raw text
     }
 
+    if (wrapUp) question = "";
+
     await supabase.from("messages").insert({
       session_id: data.sessionId,
       sender: "aline",
@@ -162,11 +186,40 @@ export const chat = createServerFn({ method: "POST" })
     });
 
     if (phase === "content") {
-      await supabase.from("sessions").update({ status: "content" }).eq("id", data.sessionId);
+      await supabase
+        .from("sessions")
+        .update({ status: wrapUp ? "wrapping_up" : "content" })
+        .eq("id", data.sessionId);
     }
 
-    return { phase, message, question };
+    return { phase, message, question, wrapUp };
   });
+
+const CompleteSessionInput = z.object({
+  sessionId: z.string().uuid(),
+  correct: z.number().int().min(0).nullable().default(null),
+  total: z.number().int().min(0).nullable().default(null),
+});
+
+/** Marks the session finished so the parent dashboard shows it as completed. */
+export const completeSession = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => CompleteSessionInput.parse(input))
+  .handler(async ({ data }) => {
+    const { createServerSupabase } = await import("./supabase.server");
+    const supabase = createServerSupabase();
+    const { error } = await supabase
+      .from("sessions")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        quiz_correct: data.correct,
+        quiz_total: data.total,
+      })
+      .eq("id", data.sessionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 const QuizInput = z.object({ sessionId: z.string().uuid() });
 
