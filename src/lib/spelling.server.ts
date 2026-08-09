@@ -23,7 +23,10 @@ export function buildSpellingPrompt(): string {
 قواعد:
 - اسم خاص، ایموجی و علائم را نادیده بگیر.
 - اگر متن مشکلی ندارد، آرایه را خالی برگردان.
-- correct_form باید شکل درستِ نوشتاری همان کلمه باشد.
+- correct_form باید دقیقاً همان املای درست و رسمیِ فرهنگ‌لغتیِ کلمه در فارسی معیار باشد، نه فقط تغییرِ یک حرف. مثلاً «آزیت» و «ازیت» هر دو باید به «اذیت» اصلاح شوند، «مسئله» نه «مسأله‌ی غلط»، «خواهر» نه «خاهر».
+- پیش از پاسخ، مطمئن شو correct_form یک واژهٔ واقعی و درست فارسی است؛ اگر مطمئن نیستی، آن مورد را اصلاً گزارش نکن.
+- اگر correct_form با written_form یکسان شد، آن مورد را حذف کن.
+- برای نوعِ «گفتاری» هم شکلِ نوشتاریِ درستِ همان واژه را بنویس (میخام → می‌خواهم).
 
 فقط JSON با این شکل برگردان:
 {"issues":[{"written_form":"...","correct_form":"...","error_type":"املایی"}]}`;
@@ -47,6 +50,7 @@ export function parseSpellingIssues(raw: string): SpellingIssue[] {
         correct_form: i.correct_form.trim().slice(0, 60),
         error_type: i.error_type,
       }))
+      .filter((i) => i.correct_form.length > 0 && i.correct_form !== i.written_form)
       .slice(0, 10);
   } catch {
     return [];
