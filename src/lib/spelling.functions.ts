@@ -16,8 +16,6 @@ export const analyzeSpelling = createServerFn({ method: "POST" })
     const text = data.text.trim();
     if (text.length < 2) return { stored: 0 };
 
-    const apiKey = process.env["OPENROUTER_API_KEY"];
-    if (!apiKey) return { stored: 0 };
 
     const { createServerSupabase } = await import("./supabase.server");
     const { buildSpellingPrompt, parseSpellingIssues } = await import("./spelling.server");
@@ -29,24 +27,16 @@ export const analyzeSpelling = createServerFn({ method: "POST" })
       .eq("id", data.sessionId)
       .single();
 
-    const { AI_MODEL } = await import("./ai-model.server");
+    const { callAi } = await import("./ai-model.server");
     let res: Response;
     try {
-      res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: AI_MODEL,
-          messages: [
-            { role: "system", content: buildSpellingPrompt() },
-            { role: "user", content: text },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0,
-          max_tokens: 900,
-        }),
-        signal: AbortSignal.timeout(30_000),
-      });
+      res = await callAi(
+        [
+          { role: "system", content: buildSpellingPrompt() },
+          { role: "user", content: text },
+        ],
+        { temperature: 0 },
+      );
     } catch (err) {
       console.error("[spelling.analyze] request failed", {
         sessionId: data.sessionId,
