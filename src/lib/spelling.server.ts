@@ -53,7 +53,8 @@ export function parseSpellingIssues(raw: string): SpellingIssue[] {
       })
       .filter((i) => i.correct_form !== i.written_form);
 
-    return dedupeIssues(cleaned).slice(0, 10);
+    // One batched call per session, so allow more issues than a per-message call.
+    return dedupeIssues(cleaned).slice(0, 40);
   } catch {
     return [];
   }
