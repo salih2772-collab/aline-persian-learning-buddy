@@ -5,6 +5,8 @@ import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
 import { QuizCard } from "@/components/quiz-card";
 import { chat, createSession, generateQuiz } from "@/lib/aline.functions";
+import { analyzeSpelling } from "@/lib/spelling.functions";
+
 import {
   DEFAULT_SETTINGS,
   MOODS,
