@@ -73,11 +73,14 @@ export const chat = createServerFn({ method: "POST" })
     const phase: Phase = !lastAline ? "greeting" : nextPhase(lastAline.phase as Phase);
 
     // Decide whether this reply should end the session instead of asking again.
-    const contentTurns = past.filter((m) => m.phase === "content" && m.sender === "child").length;
+    // Counts this turn too; needs at least 6 real exchanges in the content phase.
+    const contentTurns =
+      past.filter((m) => m.phase === "content" && m.sender === "child").length +
+      (phase === "content" && data.userMessage.trim() ? 1 : 0);
     const wrapUp =
       data.finish ||
-      (phase === "content" &&
-        (contentTurns >= 6 || (contentTurns >= 2 && isDisengaged(data.userMessage))));
+      (phase === "content" && (contentTurns >= 6 || wantsToStop(data.userMessage)));
+    const shortAnswer = phase === "content" && !wrapUp && data.userMessage.trim().length <= 6;
 
 
     // Save the mood sticker and the reason the child gave for it.
