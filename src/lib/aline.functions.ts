@@ -85,7 +85,9 @@ export const chat = createServerFn({ method: "POST" })
     const wrapUp =
       data.finish ||
       (phase === "content" &&
+        !isDistressMessage(data.userMessage) &&
         (wantsToStop(data.userMessage) || (contentTurns >= 9 && !shortNow)));
+
     const shortAnswer = phase === "content" && !wrapUp && shortNow;
     // The single story of the session is told in the first content reply only.
     const storyTold = past.some((m) => m.phase === "content" && m.sender === "aline");
