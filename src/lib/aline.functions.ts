@@ -50,7 +50,9 @@ export const chat = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInput.parse(input))
   .handler(async ({ data }) => {
     const { createServerSupabase } = await import("./supabase.server");
-    const { buildSystemPrompt, nextPhase, compactHistory } = await import("./aline-prompt.server");
+    const { buildSystemPrompt, nextPhase, compactHistory, stripMarkdown, isDistressMessage } =
+      await import("./aline-prompt.server");
+
     const { loadPageContent } = await import("./book-page.server");
     const { callAi } = await import("./ai-model.server");
     const supabase = createServerSupabase();
@@ -83,8 +85,15 @@ export const chat = createServerFn({ method: "POST" })
     const wrapUp =
       data.finish ||
       (phase === "content" &&
+        !isDistressMessage(data.userMessage) &&
         (wantsToStop(data.userMessage) || (contentTurns >= 9 && !shortNow)));
+
     const shortAnswer = phase === "content" && !wrapUp && shortNow;
+    // The single story of the session is told in the first content reply only.
+    const storyTold = past.some((m) => m.phase === "content" && m.sender === "aline");
+    // A disclosure gets a message of its own — no story, no lesson in that turn.
+    const distress = isDistressMessage(data.userMessage);
+
 
 
 
@@ -100,9 +109,10 @@ export const chat = createServerFn({ method: "POST" })
     // Load the configured page of the configured book (printed page + book offset).
     // Only the teaching turn needs it — greeting/day_check and the wrap-up don't.
     let pageContent: string | null = null;
-    if (phase === "content" && !wrapUp && session.book && session.page) {
+    if (phase === "content" && !wrapUp && !distress && session.book && session.page) {
       pageContent = await loadPageContent(supabase, session.book, session.page);
     }
+
 
     if (data.userMessage.trim()) {
       await supabase.from("messages").insert({
@@ -117,7 +127,16 @@ export const chat = createServerFn({ method: "POST" })
     const messages = [
       {
         role: "system" as const,
-        content: buildSystemPrompt(session, phase, pageContent, wrapUp, shortAnswer),
+        content: buildSystemPrompt(
+          session,
+          phase,
+          pageContent,
+          wrapUp,
+          shortAnswer,
+          storyTold,
+          distress,
+        ),
+
       },
       ...compactHistory(past),
       ...(data.userMessage.trim()
@@ -166,6 +185,10 @@ export const chat = createServerFn({ method: "POST" })
     }
 
     if (wrapUp) question = "";
+    // The chat bubbles render plain text, so markdown must never reach them.
+    message = stripMarkdown(message);
+    question = stripMarkdown(question);
+
 
     await supabase.from("messages").insert({
       session_id: data.sessionId,

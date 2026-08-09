@@ -24,6 +24,8 @@ export function buildSystemPrompt(
   pageContent: string | null,
   wrapUp = false,
   shortAnswer = false,
+  storyTold = false,
+  distress = false,
 ) {
   const name = session.student_name?.trim() || "دوست خوبم";
   const gentle = isGentleMood(session.mood_sticker);
@@ -39,7 +41,7 @@ export function buildSystemPrompt(
         : isQuran
           ? [
               "محتوای این صفحه قرآنی است (صداها، حرکت‌ها، شناخت کلمه‌ها). این نوع محتوا را هرگز داخل داستان نبر و آن را به داستان گره نزن.",
-              "ساختار پاسخ دو بخش کاملاً جدا باشد: اول داستان اخلاقی کوتاه و کامل با پیام اخلاقی‌اش؛ بعد یک خط فاصله و سپس بخش جدا با تیتر «حالا بخش قرآن 📖» که فقط همان صفحه را ساده آموزش می‌دهد.",
+              "فقط در همین پیامِ اولِ داستان، بعد از داستان یک بخش جدا دربارهٔ صفحهٔ قرآن بیاور. در پیام‌های بعدی این بخش را دوباره نساز و تیترش را تکرار نکن.",
               "هیچ‌وقت یک جملهٔ درسی و یک جملهٔ اخلاقی را با «ولی» یا «اما» یا هر رابط دیگری به هم وصل نکن، مگر واقعاً رابطهٔ منطقی داشته باشند.",
             ].join(" ")
           : "اگر نکته‌ای از متن صفحه به‌طور طبیعی در داستان جا می‌شود، نامحسوس بیاور؛ اگر جا نمی‌شود، آن را در داستان نیاور و بعد از داستان در بخشی جداگانه توضیح بده."
@@ -50,15 +52,22 @@ export function buildSystemPrompt(
     day_check: `مرحلهٔ فعلی: «دربارهٔ روزش». به حسی که گفت واکنش مهربان نشان بده و یک سؤال کوتاه دربارهٔ امروزش بپرس (مدرسه، دوستان، بازی).`,
     content: !isStory
       ? `مرحلهٔ فعلی: «آموزش». فقط بر پایهٔ متن درسِ داده‌شده آموزش بده؛ چیزی از خودت به متن اضافه نکن. خلاصهٔ ساده و کودکانه بگو و در پایان یک سؤال از همان صفحه بپرس.`
-      : [
-          `مرحلهٔ فعلی: «داستان». یک داستان کوتاه اخلاقی${
-            session.moral_topic ? ` دربارهٔ «${session.moral_topic}»` : ""
-          } تعریف کن (حداکثر ۸ جمله)، پیام اخلاقی‌اش را بگو و در پایان یک سؤال بپرس.`,
-          weave,
-        ]
-          .filter(Boolean)
-          .join(" "),
+      : storyTold
+        ? [
+            "مرحلهٔ فعلی: «ادامهٔ گفت‌وگو دربارهٔ همان داستان». داستان این جلسه قبلاً تعریف شده است.",
+            "هرگز داستان تازه‌ای شروع نکن و همان داستان را دوباره تعریف نکن؛ فقط دربارهٔ همان داستان و همان درس با کودک حرف بزن، جوابش را بررسی کن و یک سؤال کوتاه تازه بپرس.",
+            "تیتر یا بخش‌بندی تازه (مثل «حالا بخش قرآن») نساز؛ پیام کوتاه و گفت‌وگویی باشد (حداکثر ۴ جمله).",
+          ].join(" ")
+        : [
+            `مرحلهٔ فعلی: «داستان». فقط همین یک‌بار در کل جلسه، یک داستان کوتاه اخلاقی${
+              session.moral_topic ? ` دربارهٔ «${session.moral_topic}»` : ""
+            } تعریف کن (حداکثر ۸ جمله)، پیام اخلاقی‌اش را بگو و در پایان یک سؤال بپرس.`,
+            weave,
+          ]
+            .filter(Boolean)
+            .join(" "),
   };
+
 
   // Only the content phase deals with lesson text, so its coherence rules are
   // pointless ballast in greeting/day_check.
@@ -110,28 +119,38 @@ export function buildSystemPrompt(
       ? `حال امروز کودک: ${session.mood_sticker}${session.mood_reason ? ` — ${session.mood_reason}` : ""}.`
       : "",
     gentle ? "حال کودک خوب نیست: آرام‌تر و دلگرم‌کننده‌تر باش؛ اول احساسش را تأیید کن." : "",
-    wrapUp
+    "قالب متن: فقط متن سادهٔ فارسی بنویس. هیچ نشانهٔ مارک‌داون به کار نبر: نه **پررنگ**، نه # و ###، نه --- و نه فهرست با * یا -. تیتر لازم داشتی، آن را در یک جملهٔ ساده بگو.",
+    distress && !wrapUp
       ? [
-          "مرحلهٔ فعلی: «پایان جلسه». هیچ سؤال جدیدی نپرس.",
-          "در دو سه جملهٔ گرم جمع‌بندی کن که امروز چه کار کردیم، تشویق کن و خداحافظی کن.",
-          'مقدار "question" را حتماً "" بگذار.',
+          "مهم‌ترین نکتهٔ این پیام: کودک همین الان حرف ناراحت‌کننده‌ای زد.",
+          "این پیام فقط و فقط پاسخ به همان حرف باشد: احساسش را با گرمی تأیید کن، بگو تقصیر او نیست و پیشنهاد بده با یک بزرگ‌ترِ قابل‌اعتماد حرف بزند.",
+          "در همین پیام هیچ داستانی تعریف نکن، هیچ درسی نگو و به محتوای کتاب اشاره نکن؛ ادامهٔ درس بماند برای پیام بعد.",
+          'مقدار "question" یک سؤال کوتاه و مهربان دربارهٔ حال خودش باشد، نه دربارهٔ درس.',
         ].join(" ")
-      : phaseGuide[phase],
-    coherenceRules,
+      : wrapUp
+        ? [
+            "مرحلهٔ فعلی: «پایان جلسه». هیچ سؤال جدیدی نپرس.",
+            "در دو سه جملهٔ گرم جمع‌بندی کن که امروز چه کار کردیم، تشویق کن و خداحافظی کن.",
+            'مقدار "question" را حتماً "" بگذار.',
+          ].join(" ")
+        : phaseGuide[phase],
+    distress && !wrapUp ? "" : coherenceRules,
     noRepeat,
     accuracyRule,
     shortAnswerRule,
 
+
     // Page text is heavy; send it only in the teaching turn, never in
     // greeting/day_check or the wrap-up.
-    pageContent && !wrapUp
+    pageContent && !wrapUp && !distress
       ? [
           `متن صفحهٔ کتاب (${session.book} — صفحهٔ ${session.page}):\n"""\n${pageContent.slice(0, 2500)}\n"""`,
           "اگر متن فهرست/جدول یا مجموعه‌ای از کلمه‌های جداست، هر مورد را جدا در نظر بگیر و دو مورد را به هم نچسبان تا عبارت تازه بسازی.",
         ].join("\n\n")
-      : !pageContent && phase === "content" && !isStory && !wrapUp
+      : !pageContent && phase === "content" && !isStory && !wrapUp && !distress
         ? "متن این صفحه موجود نیست؛ مؤدبانه بگو و پیشنهاد بده با هم یک داستان بخوانید."
         : "",
+
     'خروجی فقط JSON معتبر: {"message": "...", "question": "..."}',
   ]
     .filter(Boolean)
@@ -198,4 +217,30 @@ export function compactHistory(
   }
 
   return messages;
+}
+
+/** Persian text for kids should be plain: drop any markdown the model still emits. */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+    .replace(/^\s{0,3}([-*_])\s*\1\s*\1[\s\S]*?$/gm, "")
+    .replace(/^\s{0,3}[-*+]\s+/gm, "• ")
+    .replace(/\*\*([\s\S]*?)\*\*/g, "$1")
+    .replace(/__([\s\S]*?)__/g, "$1")
+    .replace(/(^|\s)\*([^*\n]+)\*/g, "$1$2")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** True when the child's message hints at being hurt/scared/unloved by an adult. */
+const DISTRESS_PATTERNS = [
+  "زد", "کتک", "می‌زنه", "میزنه", "دعوا", "داد زد", "ترسید", "می‌ترسم", "میترسم",
+  "دوستم ندار", "تنبیه", "فحش", "مسخره", "اذیت", "گریه",
+];
+export function isDistressMessage(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  return DISTRESS_PATTERNS.some((p) => t.includes(p));
 }
