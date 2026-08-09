@@ -70,6 +70,14 @@ export const chat = createServerFn({ method: "POST" })
     const lastAline = [...past].reverse().find((m) => m.sender === "aline");
     const phase: Phase = !lastAline ? "greeting" : nextPhase(lastAline.phase as Phase);
 
+    // Decide whether this reply should end the session instead of asking again.
+    const contentTurns = past.filter((m) => m.phase === "content" && m.sender === "child").length;
+    const wrapUp =
+      data.finish ||
+      (phase === "content" &&
+        (contentTurns >= 6 || (contentTurns >= 2 && isDisengaged(data.userMessage))));
+
+
     // Save the mood sticker and the reason the child gave for it.
     const moodUpdate: { mood_sticker?: string; mood_reason?: string } = {};
     if (data.moodSticker && !session.mood_sticker) moodUpdate.mood_sticker = data.moodSticker;
