@@ -111,6 +111,7 @@ export function buildQuizPrompt(session: SessionRow, contentText: string, pageCo
     "زبان فارسی ساده و کودکانه؛ سؤال‌ها کوتاه و گزینه‌ها کوتاه باشند. فقط یک گزینه درست باشد.",
     `محتوایی که گفته شد:\n"""\n${contentText.slice(0, 6000)}\n"""`,
     pageContent ? `متن صفحهٔ کتاب مرتبط:\n"""\n${pageContent.slice(0, 3000)}\n"""` : "",
+    "اگر متن صفحه فهرست یا مجموعه‌ای از کلمه‌ها و عبارت‌های جداست، هر مورد را جدا در نظر بگیر و دو مورد جدا را به هم نچسبان تا عبارت تازه بسازی.",
     'خروجی فقط JSON معتبر: {"questions":[{"question":"...","options":["...","...","..."],"correct":0}]}',
   ]
     .filter(Boolean)
