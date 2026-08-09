@@ -281,6 +281,85 @@ function DashboardPage() {
         </section>
 
         <section className="card-soft mt-5 p-4 sm:p-6">
+          <h2 className="text-lg font-black">الگوی نوشتاری</h2>
+          <p className="text-balance-fa mt-1 text-xs text-muted-foreground">
+            الین هیچ‌وقت کودک را در گفت‌وگو تصحیح نمی‌کند؛ این بخش فقط برای شماست.
+          </p>
+
+          {spelling.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">هنوز نوشته‌ای تحلیل نشده است.</p>
+          ) : (
+            <div className="mt-4 grid gap-5">
+              <div className="grid grid-cols-3 gap-3">
+                <Stat label="نیاز به تمرین" value={toFa(realIssues.length)} emoji="✍️" />
+                <Stat label="نوشتار گفتاری" value={toFa(colloquial.length)} emoji="💬" />
+                <Stat label="نیم‌فاصله" value={toFa(spacing.length)} emoji="↔️" />
+              </div>
+
+              {pairs.length > 0 ? (
+                <div>
+                  <h3 className="mb-2 text-sm font-bold">حروفی که بیشتر جابه‌جا می‌شوند</h3>
+                  <ul className="flex flex-wrap gap-2">
+                    {pairs.map((p) => (
+                      <li
+                        key={p.pair}
+                        className="rounded-full bg-secondary px-4 py-2 text-sm font-bold"
+                        dir="rtl"
+                      >
+                        {p.pair} <span className="text-muted-foreground">({toFa(p.count)} بار)</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              <div>
+                <h3 className="mb-2 text-sm font-bold">نمونه‌های اخیر برای تمرین</h3>
+                {realIssues.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">غلط املایی تازه‌ای ثبت نشده است. 🎉</p>
+                ) : (
+                  <ul className="grid gap-2">
+                    {realIssues.slice(0, 8).map((r) => (
+                      <li
+                        key={r.id}
+                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-secondary/60 p-3 text-sm"
+                      >
+                        <span className="min-w-0">
+                          <span className="font-bold text-destructive">{r.written_form}</span>
+                          <span className="mx-2 text-muted-foreground">←</span>
+                          <span className="font-bold text-success">{r.correct_form}</span>
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {r.child_name ? `${r.child_name} · ` : ""}
+                            {formatFaDate(new Date(r.created_at).getTime())}
+                          </span>
+                        </span>
+                        <span className="shrink-0 rounded-full bg-card px-3 py-1 text-xs font-bold text-muted-foreground">
+                          {r.error_type}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {colloquial.length > 0 ? (
+                <div className="rounded-2xl border border-border p-3">
+                  <h3 className="text-sm font-bold">نوشتار گفتاری — طبیعی در این سن، غلط نیست</h3>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {colloquial.slice(0, 10).map((r) => (
+                      <li key={r.id} className="rounded-full bg-secondary px-3 py-1.5 text-xs">
+                        {r.written_form} <span className="text-muted-foreground">({r.correct_form})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </section>
+
+
+        <section className="card-soft mt-5 p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-black">جلسه‌های اخیر</h2>
           <ul className="grid gap-3">
             {sessions.map((s) => (
