@@ -117,12 +117,20 @@ function DashboardPage() {
         <h1 className="text-3xl font-black">پیشرفت این هفته</h1>
         <p className="mt-2 text-sm text-muted-foreground">خلاصه‌ای از جلسه‌های کودک با الین.</p>
 
-        <Link
-          to="/settings"
-          className="mt-4 inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-accent-foreground transition-opacity hover:opacity-90"
-        >
-          تنظیم جلسهٔ جدید ⚙️
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            to="/settings"
+            className="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-accent-foreground transition-opacity hover:opacity-90"
+          >
+            تنظیم جلسهٔ جدید ⚙️
+          </Link>
+          <Link
+            to="/preferences"
+            className="inline-flex rounded-full border border-border px-5 py-2.5 text-sm font-bold transition-colors hover:bg-secondary"
+          >
+            تنظیمات برنامه 🎛️
+          </Link>
+        </div>
 
         <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="دقیقهٔ یادگیری" value={toFa(totalMinutes)} emoji="⏱️" />
