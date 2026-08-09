@@ -108,7 +108,10 @@ export const chat = createServerFn({ method: "POST" })
     }
 
     const messages = [
-      { role: "system" as const, content: buildSystemPrompt(session, phase, pageContent) },
+      {
+        role: "system" as const,
+        content: buildSystemPrompt(session, phase, pageContent, wrapUp),
+      },
       ...past.map((m) => ({
         role: (m.sender === "child" ? "user" : "assistant") as "user" | "assistant",
         content: m.text,
