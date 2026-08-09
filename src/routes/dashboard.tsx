@@ -59,6 +59,19 @@ type MoodRow = {
   created_at: string;
 };
 
+type DoneRow = {
+  id: string;
+  content_type: string;
+  moral_topic: string | null;
+  book: string | null;
+  page: string | null;
+  mood_sticker: string | null;
+  quiz_correct: number | null;
+  quiz_total: number | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
 function DashboardPage() {
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
   const [moodRows, setMoodRows] = useState<MoodRow[]>([]);
