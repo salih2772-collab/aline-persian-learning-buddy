@@ -142,14 +142,15 @@ export function buildSystemPrompt(
 
     // Page text is heavy; send it only in the teaching turn, never in
     // greeting/day_check or the wrap-up.
-    pageContent && !wrapUp
+    pageContent && !wrapUp && !distress
       ? [
           `متن صفحهٔ کتاب (${session.book} — صفحهٔ ${session.page}):\n"""\n${pageContent.slice(0, 2500)}\n"""`,
           "اگر متن فهرست/جدول یا مجموعه‌ای از کلمه‌های جداست، هر مورد را جدا در نظر بگیر و دو مورد را به هم نچسبان تا عبارت تازه بسازی.",
         ].join("\n\n")
-      : !pageContent && phase === "content" && !isStory && !wrapUp
+      : !pageContent && phase === "content" && !isStory && !wrapUp && !distress
         ? "متن این صفحه موجود نیست؛ مؤدبانه بگو و پیشنهاد بده با هم یک داستان بخوانید."
         : "",
+
     'خروجی فقط JSON معتبر: {"message": "...", "question": "..."}',
   ]
     .filter(Boolean)
