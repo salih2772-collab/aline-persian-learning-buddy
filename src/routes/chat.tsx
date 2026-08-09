@@ -164,6 +164,7 @@ function ChatPage() {
 
   /** Builds the end-of-session quiz; falls back to the closing screen if it fails. */
   async function startQuiz(id: string) {
+    runBatchedSpellingCheck(id);
     setThinking(true);
     try {
       const quiz = await makeQuiz({ data: { sessionId: id } });
@@ -195,7 +196,7 @@ function ChatPage() {
     if (!text || thinking || !sessionId) return;
     setInput("");
     push("child", text);
-    silentSpellingCheck(sessionId, text);
+    childTexts.current.push(text);
 
     const wasMoodReason = stage === "moodReason";
 
