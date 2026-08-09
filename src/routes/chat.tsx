@@ -54,11 +54,13 @@ function ChatPage() {
     mood: Mood;
   } | null>(null);
   const [mood, setMood] = useState<Mood | null>(null);
+  const [result, setResult] = useState<{ correct: number; total: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const startSession = useServerFn(createSession);
   const sendChat = useServerFn(chat);
   const makeQuiz = useServerFn(generateQuiz);
+  const endSession = useServerFn(completeSession);
   const checkSpelling = useServerFn(analyzeSpelling);
 
   // Silent: results are never shown to the child, only stored for parents.
