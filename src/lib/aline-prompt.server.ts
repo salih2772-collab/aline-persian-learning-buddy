@@ -18,7 +18,12 @@ export function isGentleMood(mood: string | null | undefined) {
   return GENTLE_MOODS.some((m) => mood.includes(m));
 }
 
-export function buildSystemPrompt(session: SessionRow, phase: Phase, pageContent: string | null) {
+export function buildSystemPrompt(
+  session: SessionRow,
+  phase: Phase,
+  pageContent: string | null,
+  wrapUp = false,
+) {
   const name = session.student_name?.trim() || "دوست خوبم";
   const gentle = isGentleMood(session.mood_sticker);
   const isStory = session.content_type !== "lesson";
