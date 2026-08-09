@@ -230,9 +230,19 @@ function ChatPage() {
           {thinking ? <Thinking /> : null}
 
           {error ? (
-            <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {error}
-            </p>
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <span className="text-balance-fa">{error}</span>
+              {retry ? (
+                <button
+                  type="button"
+                  onClick={retry}
+                  disabled={thinking}
+                  className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"
+                >
+                  دوباره امتحان کن 🔁
+                </button>
+              ) : null}
+            </div>
           ) : null}
 
           <div ref={bottomRef} />
