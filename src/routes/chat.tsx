@@ -149,6 +149,8 @@ function ChatPage() {
 
 
 
+
+
     if (stage === "moodReason" && mood) {
       const phase = await talk(sessionId, text, mood, text);
       if (!phase) return;
