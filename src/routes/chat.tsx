@@ -33,7 +33,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 type Msg = { id: number; from: "aline" | "child"; text: string };
-type Stage = "start" | "mood" | "moodReason" | "talk" | "quiz" | "free";
+type Stage = "start" | "mood" | "moodReason" | "talk" | "quiz" | "free" | "done";
 
 let msgId = 0;
 const nextId = () => ++msgId;
