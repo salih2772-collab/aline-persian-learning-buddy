@@ -26,7 +26,14 @@ import {
   toFa,
   type QuizResult,
 } from "@/lib/aline";
-import { REAL_ERROR_TYPES, topConfusedPairs, type SpellingRow } from "@/lib/spelling";
+import {
+  REAL_ERROR_TYPES,
+  classifyIssue,
+  dedupeIssues,
+  topConfusedPairs,
+  type SpellingRow,
+} from "@/lib/spelling";
+
 
 
 export const Route = createFileRoute("/dashboard")({
