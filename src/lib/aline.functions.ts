@@ -30,7 +30,18 @@ const ChatInput = z.object({
   userMessage: z.string().default(""),
   moodSticker: z.string().nullable().default(null),
   moodReason: z.string().nullable().default(null),
+  /** Child tapped "تمام شد" — Aline must wrap up now. */
+  finish: z.boolean().default(false),
 });
+
+/** Short/disengaged answers ("نمی‌دونم", "نه", "باشه"…) hint the child is done. */
+const DISENGAGED = ["نمیدونم", "نمی‌دونم", "نه", "آره", "باشه", "هیچی", "خسته", "بسه", "تمام", "تموم"];
+function isDisengaged(text: string) {
+  const t = text.trim();
+  if (!t) return false;
+  return t.length <= 4 || DISENGAGED.includes(t);
+}
+
 
 export const chat = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatInput.parse(input))
