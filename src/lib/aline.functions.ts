@@ -87,6 +87,11 @@ export const chat = createServerFn({ method: "POST" })
       (phase === "content" &&
         (wantsToStop(data.userMessage) || (contentTurns >= 9 && !shortNow)));
     const shortAnswer = phase === "content" && !wrapUp && shortNow;
+    // The single story of the session is told in the first content reply only.
+    const storyTold = past.some((m) => m.phase === "content" && m.sender === "aline");
+    // A disclosure gets a message of its own — no story, no lesson in that turn.
+    const distress = isDistressMessage(data.userMessage);
+
 
 
 
