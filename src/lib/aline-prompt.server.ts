@@ -125,3 +125,40 @@ export function nextPhase(current: Phase): Phase {
   if (current === "day_check") return "content";
   return "content";
 }
+
+/**
+ * Keeps the last few exchanges verbatim and compresses everything older into a
+ * one-line recap, so input tokens stop growing with the conversation.
+ */
+export function compactHistory(
+  past: { sender: string; text: string }[],
+  keep = 6,
+): { role: "user" | "assistant"; content: string }[] {
+  const recent = past.slice(-keep);
+  const older = past.slice(0, Math.max(0, past.length - keep));
+
+  const messages: { role: "user" | "assistant"; content: string }[] = [];
+
+  if (older.length > 0) {
+    const summary = older
+      .map((m) => {
+        const who = m.sender === "child" ? "کودک" : "الین";
+        const text = m.text.replace(/\s+/g, " ").trim().slice(0, 90);
+        return `${who}: ${text}`;
+      })
+      .join(" | ");
+    messages.push({
+      role: "user",
+      content: `خلاصهٔ بخش‌های قبلی گفت‌وگو (فقط برای یادآوری): ${summary.slice(0, 900)}`,
+    });
+  }
+
+  for (const m of recent) {
+    messages.push({
+      role: m.sender === "child" ? "user" : "assistant",
+      content: m.text,
+    });
+  }
+
+  return messages;
+}
