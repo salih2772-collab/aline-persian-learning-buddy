@@ -103,12 +103,15 @@ function ChatPage() {
     userMessage: string,
     moodSticker: string | null = null,
     moodReason: string | null = null,
+    finish = false,
   ) {
     setThinking(true);
     try {
-      const reply = await sendChat({ data: { sessionId: id, userMessage, moodSticker, moodReason } });
+      const reply = await sendChat({
+        data: { sessionId: id, userMessage, moodSticker, moodReason, finish },
+      });
       push("aline", [reply.message, reply.question].filter(Boolean).join("\n\n"));
-      return reply.phase;
+      return reply;
     } finally {
       setThinking(false);
     }
@@ -135,8 +138,8 @@ function ChatPage() {
         setSessionId(id);
         setThinking(false);
       }
-      const phase = await talk(id, "سلام الین!");
-      if (phase) setStage("mood");
+      const reply = await talk(id, "سلام الین!");
+      if (reply.phase) setStage("mood");
     });
   }
 
@@ -150,6 +153,33 @@ function ChatPage() {
     push("aline", `${m.emoji} ممنون که گفتی!\n\nچرا امروز این حس رو داری؟ برام تعریف کن 💛`);
   }
 
+  /** Builds the end-of-session quiz; falls back to the closing screen if it fails. */
+  async function startQuiz(id: string) {
+    setThinking(true);
+    try {
+      const quiz = await makeQuiz({ data: { sessionId: id } });
+      if (quiz.questions.length === 0) throw new Error("empty");
+      setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood: mood ?? "happy" });
+      setStage("quiz");
+    } catch {
+      // The quiz is optional — never block the child on it.
+      await endSession({ data: { sessionId: id, correct: null, total: null } }).catch(() => {});
+      setStage("done");
+    } finally {
+      setThinking(false);
+    }
+  }
+
+  /** "تمام شد" — the child can end the session at any moment. */
+  async function finishNow() {
+    if (!sessionId || thinking) return;
+    push("child", "تمام شد ✋");
+    await run(async () => {
+      await talk(sessionId, "دیگه کافیه، تمام شد.", null, null, true);
+      await startQuiz(sessionId);
+    });
+  }
+
   async function sendFree(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
@@ -159,7 +189,6 @@ function ChatPage() {
     silentSpellingCheck(sessionId, text);
 
     const wasMoodReason = stage === "moodReason";
-    const wasTalk = stage === "talk";
 
     await run(async () => {
       if (wasMoodReason && mood) {
@@ -168,25 +197,12 @@ function ChatPage() {
         return;
       }
 
-      const phase = await talk(sessionId, text);
-      if (phase === "content" && wasTalk && mood) {
-        // Build the quiz from the story/lesson Aline just gave.
-        setThinking(true);
-        try {
-          const quiz = await makeQuiz({ data: { sessionId } });
-          setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood });
-          setStage("quiz");
-        } catch {
-          // The quiz is optional — never block the child on it.
-          setStage("free");
-        } finally {
-          setThinking(false);
-        }
-      }
+      const reply = await talk(sessionId, text);
+      if (reply.wrapUp) await startQuiz(sessionId);
     });
   }
 
-  function finishQuiz(correct: number, total: number) {
+  async function finishQuiz(correct: number, total: number) {
     if (pending) {
       saveQuizResult({
         topic: pending.topic,
@@ -197,8 +213,13 @@ function ChatPage() {
         mood: pending.mood,
       });
     }
-    setStage("free");
+    setResult({ correct, total });
+    if (sessionId) {
+      await endSession({ data: { sessionId, correct, total } }).catch(() => {});
+    }
+    setStage("done");
   }
+
 
   return (
     <div className="flex min-h-screen flex-col">
