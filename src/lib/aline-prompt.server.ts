@@ -102,6 +102,8 @@ export function buildSystemPrompt(
         ].join(" ")
       : phaseGuide[phase],
     coherenceRules,
+    noRepeat,
+    shortAnswerRule,
     // Page text is heavy; send it only in the teaching turn, never in
     // greeting/day_check or the wrap-up.
     pageContent && !wrapUp
