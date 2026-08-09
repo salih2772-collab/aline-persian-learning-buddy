@@ -73,14 +73,19 @@ export const chat = createServerFn({ method: "POST" })
     const phase: Phase = !lastAline ? "greeting" : nextPhase(lastAline.phase as Phase);
 
     // Decide whether this reply should end the session instead of asking again.
-    // Counts this turn too; needs at least 6 real exchanges in the content phase.
+    // Counts this turn too. Note: the first content-phase child message is still
+    // an answer to the day_check question, so the real teaching exchanges start
+    // one turn later — hence the higher threshold.
     const contentTurns =
       past.filter((m) => m.phase === "content" && m.sender === "child").length +
       (phase === "content" && data.userMessage.trim() ? 1 : 0);
+    const shortNow = data.userMessage.trim().length <= 6;
     const wrapUp =
       data.finish ||
-      (phase === "content" && (contentTurns >= 6 || wantsToStop(data.userMessage)));
-    const shortAnswer = phase === "content" && !wrapUp && data.userMessage.trim().length <= 6;
+      (phase === "content" &&
+        (wantsToStop(data.userMessage) || (contentTurns >= 9 && !shortNow)));
+    const shortAnswer = phase === "content" && !wrapUp && shortNow;
+
 
 
     // Save the mood sticker and the reason the child gave for it.
