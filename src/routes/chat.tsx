@@ -80,6 +80,21 @@ function ChatPage() {
     setMessages((m) => [...m, { id: nextId(), from, text }]);
   }
 
+  // Runs an action; on failure clears the thinking state and offers a retry.
+  async function run(action: () => Promise<void>) {
+    setError(null);
+    setRetry(null);
+    try {
+      await action();
+    } catch (e) {
+      setThinking(false);
+      setError(e instanceof Error ? e.message : "الین الان نتونست جواب بده، دوباره امتحان کن.");
+      setRetry(() => () => void run(action));
+    } finally {
+      setThinking(false);
+    }
+  }
+
   async function talk(
     id: string,
     userMessage: string,
@@ -87,14 +102,10 @@ function ChatPage() {
     moodReason: string | null = null,
   ) {
     setThinking(true);
-    setError(null);
     try {
       const reply = await sendChat({ data: { sessionId: id, userMessage, moodSticker, moodReason } });
       push("aline", [reply.message, reply.question].filter(Boolean).join("\n\n"));
       return reply.phase;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "ارتباط با الین برقرار نشد.");
-      return null;
     } finally {
       setThinking(false);
     }
@@ -102,31 +113,28 @@ function ChatPage() {
 
   async function begin() {
     push("child", "سلام الین! 👋");
-    setThinking(true);
-    setError(null);
-    let id: string;
-    try {
-      const useBook = settings.contentType === "lesson" || settings.useBookInStory;
-      const s = await startSession({
-        data: {
-          student_name: settings.childName,
-          content_type: settings.contentType,
-          book: useBook ? settings.book : null,
-          chapter: null,
-          page: useBook ? settings.page : null,
-          moral_topic: settings.contentType === "story" ? settings.moralTopic : null,
-        },
-      });
-      id = s.sessionId;
-      setSessionId(id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "شروع جلسه ممکن نشد.");
-      setThinking(false);
-      return;
-    }
-    setThinking(false);
-    const phase = await talk(id, "سلام الین!");
-    if (phase) setStage("mood");
+    await run(async () => {
+      let id = sessionId;
+      if (!id) {
+        setThinking(true);
+        const useBook = settings.contentType === "lesson" || settings.useBookInStory;
+        const s = await startSession({
+          data: {
+            student_name: settings.childName,
+            content_type: settings.contentType,
+            book: useBook ? settings.book : null,
+            chapter: null,
+            page: useBook ? settings.page : null,
+            moral_topic: settings.contentType === "story" ? settings.moralTopic : null,
+          },
+        });
+        id = s.sessionId;
+        setSessionId(id);
+        setThinking(false);
+      }
+      const phase = await talk(id, "سلام الین!");
+      if (phase) setStage("mood");
+    });
   }
 
   async function pickMood(mood: Mood) {
@@ -147,31 +155,32 @@ function ChatPage() {
     push("child", text);
     silentSpellingCheck(sessionId, text);
 
+    const wasMoodReason = stage === "moodReason";
+    const wasTalk = stage === "talk";
 
-
-
-
-    if (stage === "moodReason" && mood) {
-      const phase = await talk(sessionId, text, mood, text);
-      if (!phase) return;
-      setStage("talk");
-      return;
-    }
-
-    const phase = await talk(sessionId, text);
-    if (phase === "content" && stage === "talk" && mood) {
-      // Build the quiz from the story/lesson Aline just gave.
-      setThinking(true);
-      try {
-        const quiz = await makeQuiz({ data: { sessionId } });
-        setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood });
-        setStage("quiz");
-      } catch {
-        setStage("free");
-      } finally {
-        setThinking(false);
+    await run(async () => {
+      if (wasMoodReason && mood) {
+        await talk(sessionId, text, mood, text);
+        setStage("talk");
+        return;
       }
-    }
+
+      const phase = await talk(sessionId, text);
+      if (phase === "content" && wasTalk && mood) {
+        // Build the quiz from the story/lesson Aline just gave.
+        setThinking(true);
+        try {
+          const quiz = await makeQuiz({ data: { sessionId } });
+          setPending({ ...quiz, type: quiz.type as "داستان" | "درس", mood });
+          setStage("quiz");
+        } catch {
+          // The quiz is optional — never block the child on it.
+          setStage("free");
+        } finally {
+          setThinking(false);
+        }
+      }
+    });
   }
 
   function finishQuiz(correct: number, total: number) {
