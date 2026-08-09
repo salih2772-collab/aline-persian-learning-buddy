@@ -102,9 +102,6 @@ export const chat = createServerFn({ method: "POST" })
       });
     }
 
-    if (!apiKey) {
-      throw new Error("کلید OpenRouter تنظیم نشده است.");
-    }
 
     const messages = [
       {
