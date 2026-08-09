@@ -76,6 +76,7 @@ function DashboardPage() {
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
   const [moodRows, setMoodRows] = useState<MoodRow[]>([]);
   const [spelling, setSpelling] = useState<SpellingRow[]>([]);
+  const [doneRows, setDoneRows] = useState<DoneRow[]>([]);
 
   useEffect(() => {
     setQuizzes(loadQuizResults());
@@ -87,6 +88,15 @@ function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => setMoodRows((data as MoodRow[] | null) ?? []));
+    void supabase
+      .from("sessions")
+      .select(
+        "id, content_type, moral_topic, book, page, mood_sticker, quiz_correct, quiz_total, completed_at, created_at",
+      )
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setDoneRows((data as DoneRow[] | null) ?? []));
     void supabase
       .from("spelling_errors")
       .select("id, child_name, written_form, correct_form, error_type, created_at")
