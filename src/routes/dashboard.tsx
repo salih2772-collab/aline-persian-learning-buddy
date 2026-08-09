@@ -122,16 +122,40 @@ function DashboardPage() {
     score: q.score,
   }));
 
+  const finishedSessions = doneRows.map((r) => ({
+    id: `s-${r.id}`,
+    date: formatFaDate(new Date(r.completed_at ?? r.created_at).getTime()),
+    type: r.content_type === "lesson" ? "درس" : "داستان",
+    topic:
+      r.content_type === "lesson"
+        ? `${r.book ?? "درس"}${r.page ? ` — صفحهٔ ${toFa(r.page)}` : ""}`
+        : (r.moral_topic ?? "داستان اخلاقی"),
+    mood: r.mood_sticker
+      ? (MOODS.find((m) => m.id === r.mood_sticker)?.emoji ?? r.mood_sticker)
+      : "🙂",
+    score:
+      r.quiz_total && r.quiz_total > 0
+        ? Math.round(((r.quiz_correct ?? 0) / r.quiz_total) * 100)
+        : null,
+    done: true,
+  }));
+
   const realSessions = [...quizzes].reverse().map((q) => ({
     id: `q-${q.id}`,
     date: formatFaDate(q.at),
     type: q.type,
     topic: q.topic,
     mood: MOODS.find((m) => m.id === q.mood)?.emoji ?? "🙂",
-    score: q.score,
+    score: q.score as number | null,
+    done: false,
   }));
-  const mockSessions = RECENT_SESSIONS.map((s) => ({ ...s, id: `m-${s.id}` }));
-  const sessions = [...realSessions, ...mockSessions].slice(0, 8);
+  const mockSessions = RECENT_SESSIONS.map((s) => ({
+    ...s,
+    id: `m-${s.id}`,
+    score: s.score as number | null,
+    done: false,
+  }));
+  const sessions = [...finishedSessions, ...realSessions, ...mockSessions].slice(0, 8);
 
   return (
     <div className="min-h-screen pb-16">
