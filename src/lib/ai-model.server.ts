@@ -27,13 +27,9 @@ export async function callAi(
       model: AI_MODEL,
       // GPT-5.6 rejects function/tool requests with reasoning enabled.
       reasoning_effort: "none",
-      messages: [
-        ...messages,
-        {
-          role: "system",
-          content: "پاسخ را فقط به صورت یک شیء JSON معتبر بده (valid JSON object).",
-        },
-      ],
+      // The caller's system prompt already specifies the JSON shape, so no
+      // extra reminder message is sent.
+      messages,
       response_format: { type: "json_object" },
       ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     }),
