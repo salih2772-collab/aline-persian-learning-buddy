@@ -176,6 +176,8 @@ export const chat = createServerFn({ method: "POST" })
       // keep raw text
     }
 
+    if (wrapUp) question = "";
+
     await supabase.from("messages").insert({
       session_id: data.sessionId,
       sender: "aline",
@@ -184,11 +186,40 @@ export const chat = createServerFn({ method: "POST" })
     });
 
     if (phase === "content") {
-      await supabase.from("sessions").update({ status: "content" }).eq("id", data.sessionId);
+      await supabase
+        .from("sessions")
+        .update({ status: wrapUp ? "wrapping_up" : "content" })
+        .eq("id", data.sessionId);
     }
 
-    return { phase, message, question };
+    return { phase, message, question, wrapUp };
   });
+
+const CompleteSessionInput = z.object({
+  sessionId: z.string().uuid(),
+  correct: z.number().int().min(0).nullable().default(null),
+  total: z.number().int().min(0).nullable().default(null),
+});
+
+/** Marks the session finished so the parent dashboard shows it as completed. */
+export const completeSession = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => CompleteSessionInput.parse(input))
+  .handler(async ({ data }) => {
+    const { createServerSupabase } = await import("./supabase.server");
+    const supabase = createServerSupabase();
+    const { error } = await supabase
+      .from("sessions")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        quiz_correct: data.correct,
+        quiz_total: data.total,
+      })
+      .eq("id", data.sessionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 const QuizInput = z.object({ sessionId: z.string().uuid() });
 
