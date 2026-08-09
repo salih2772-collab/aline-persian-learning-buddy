@@ -43,6 +43,7 @@ export const analyzeSpelling = createServerFn({ method: "POST" })
           ],
           response_format: { type: "json_object" },
           temperature: 0,
+          max_tokens: 900,
         }),
         signal: AbortSignal.timeout(30_000),
       });
