@@ -23,6 +23,7 @@ export function buildSystemPrompt(
   phase: Phase,
   pageContent: string | null,
   wrapUp = false,
+  shortAnswer = false,
 ) {
   const name = session.student_name?.trim() || "دوست خوبم";
   const gentle = isGentleMood(session.mood_sticker);
