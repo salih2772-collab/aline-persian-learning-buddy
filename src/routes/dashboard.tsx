@@ -26,6 +26,8 @@ import {
   toFa,
   type QuizResult,
 } from "@/lib/aline";
+import { REAL_ERROR_TYPES, topConfusedPairs, type SpellingRow } from "@/lib/spelling";
+
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -61,6 +63,7 @@ type MoodRow = {
 function DashboardPage() {
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
   const [moodRows, setMoodRows] = useState<MoodRow[]>([]);
+  const [spelling, setSpelling] = useState<SpellingRow[]>([]);
 
   useEffect(() => {
     setQuizzes(loadQuizResults());
@@ -71,7 +74,19 @@ function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => setMoodRows((data as MoodRow[] | null) ?? []));
+    void supabase
+      .from("spelling_errors")
+      .select("id, child_name, written_form, correct_form, error_type, created_at")
+      .order("created_at", { ascending: false })
+      .limit(60)
+      .then(({ data }) => setSpelling((data as SpellingRow[] | null) ?? []));
   }, []);
+
+  const realIssues = spelling.filter((r) => REAL_ERROR_TYPES.includes(r.error_type));
+  const colloquial = spelling.filter((r) => r.error_type === "گفتاری");
+  const spacing = spelling.filter((r) => r.error_type === "نیم‌فاصله");
+  const pairs = topConfusedPairs(spelling);
+
 
   const totalMinutes = WEEKLY_ACTIVITY.reduce((a, d) => a + d.minutes, 0);
   const totalSessions = WEEKLY_ACTIVITY.reduce((a, d) => a + d.sessions, 0);
