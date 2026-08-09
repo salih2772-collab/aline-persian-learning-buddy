@@ -49,7 +49,7 @@ function Index() {
             alt="کودکی با کوله‌پشتی که دست تکان می‌دهد"
             width={816}
             height={816}
-            className="h-[210px] w-full rounded-3xl bg-secondary object-contain p-2 sm:h-[240px]"
+            className="h-[210px] w-full rounded-3xl bg-card object-contain sm:h-[240px]"
           />
           <span className="text-3xl font-black leading-tight">من کودک هستم</span>
           <span className="kid-target flex w-full items-center justify-center rounded-full bg-primary px-6 text-xl font-black text-primary-foreground">
@@ -68,7 +68,7 @@ function Index() {
             width={816}
             height={816}
             loading="lazy"
-            className="h-[210px] w-full rounded-3xl bg-secondary object-contain p-2 sm:h-[240px]"
+            className="h-[210px] w-full rounded-3xl bg-card object-contain sm:h-[240px]"
           />
           <span className="text-3xl font-black leading-tight">والد یا معلم</span>
           <span className="kid-target flex w-full items-center justify-center rounded-full bg-accent px-6 text-xl font-black text-accent-foreground">
