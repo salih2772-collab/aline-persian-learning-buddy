@@ -218,3 +218,29 @@ export function compactHistory(
 
   return messages;
 }
+
+/** Persian text for kids should be plain: drop any markdown the model still emits. */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+    .replace(/^\s{0,3}([-*_])\s*\1\s*\1[\s\S]*?$/gm, "")
+    .replace(/^\s{0,3}[-*+]\s+/gm, "• ")
+    .replace(/\*\*([\s\S]*?)\*\*/g, "$1")
+    .replace(/__([\s\S]*?)__/g, "$1")
+    .replace(/(^|\s)\*([^*\n]+)\*/g, "$1$2")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** True when the child's message hints at being hurt/scared/unloved by an adult. */
+const DISTRESS_PATTERNS = [
+  "زد", "کتک", "می‌زنه", "میزنه", "دعوا", "داد زد", "ترسید", "می‌ترسم", "میترسم",
+  "دوستم ندار", "تنبیه", "فحش", "مسخره", "اذیت", "گریه",
+];
+export function isDistressMessage(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  return DISTRESS_PATTERNS.some((p) => t.includes(p));
+}
