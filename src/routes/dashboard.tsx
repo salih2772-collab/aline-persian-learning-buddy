@@ -380,7 +380,7 @@ function DashboardPage() {
               <div className="grid grid-cols-3 gap-3">
                 <Stat label="نیاز به تمرین" value={toFa(realIssues.length)} emoji="✍️" />
                 <Stat label="نوشتار گفتاری" value={toFa(colloquial.length)} emoji="💬" />
-                <Stat label="نیم‌فاصله" value={toFa(spacing.length)} emoji="↔️" />
+                <Stat label="فاصله‌گذاری" value={toFa(spacing.length)} emoji="↔️" />
               </div>
 
               {pairs.length > 0 ? (
