@@ -12,6 +12,7 @@ import {
   MOODS,
   loadSettings,
   saveQuizResult,
+  toFa,
   type Mood,
   type QuizQuestion,
   type SessionSettings,
