@@ -145,6 +145,9 @@ function ChatPage() {
     if (!text || thinking || !sessionId) return;
     setInput("");
     push("child", text);
+    silentSpellingCheck(sessionId, text);
+
+
 
     if (stage === "moodReason" && mood) {
       const phase = await talk(sessionId, text, mood, text);
