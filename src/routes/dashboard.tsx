@@ -105,10 +105,17 @@ function DashboardPage() {
       .then(({ data }) => setSpelling((data as SpellingRow[] | null) ?? []));
   }, []);
 
-  const realIssues = spelling.filter((r) => REAL_ERROR_TYPES.includes(r.error_type));
-  const colloquial = spelling.filter((r) => r.error_type === "گفتاری");
-  const spacing = spelling.filter((r) => r.error_type === "نیم‌فاصله");
-  const pairs = topConfusedPairs(spelling);
+  // Re-classify with the current rules and keep each word in exactly one category.
+  const normalized = dedupeIssues(
+    spelling.map((r) => ({ ...r, error_type: classifyIssue(r.written_form, r.correct_form) })),
+  );
+  const realIssues = normalized.filter((r) => REAL_ERROR_TYPES.includes(r.error_type));
+  const colloquial = normalized.filter((r) => r.error_type === "گفتاری");
+  const spacing = normalized.filter(
+    (r) => r.error_type === "نیم‌فاصله" || r.error_type === "فاصله‌گذاری",
+  );
+  const pairs = topConfusedPairs(normalized);
+
 
 
   const totalMinutes = WEEKLY_ACTIVITY.reduce((a, d) => a + d.minutes, 0);
