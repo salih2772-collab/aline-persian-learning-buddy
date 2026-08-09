@@ -56,7 +56,6 @@ type MoodRow = {
   id: string;
   student_name: string;
   mood_sticker: string | null;
-  mood_reason: string | null;
   created_at: string;
 };
 
@@ -69,7 +68,8 @@ function DashboardPage() {
     setQuizzes(loadQuizResults());
     void supabase
       .from("sessions")
-      .select("id, student_name, mood_sticker, mood_reason, created_at")
+      // mood_reason is intentionally NOT fetched: the child's own words stay private.
+      .select("id, student_name, mood_sticker, created_at")
       .not("mood_sticker", "is", null)
       .order("created_at", { ascending: false })
       .limit(8)
@@ -259,32 +259,50 @@ function DashboardPage() {
         ) : null}
 
         <section className="card-soft mt-5 p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-black">حال‌وهوای کودک و دلیلش</h2>
+          <h2 className="text-lg font-black">روند حال‌وهوا</h2>
+          <p className="text-balance-fa mt-1 text-xs text-muted-foreground">
+            برای حفظ اعتماد کودک، آنچه دربارهٔ احساسش می‌نویسد نمایش داده نمی‌شود؛ فقط روند کلی حال او را
+            می‌بینید.
+          </p>
           {moodRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">هنوز حالی ثبت نشده است.</p>
+            <p className="mt-4 text-sm text-muted-foreground">هنوز حالی ثبت نشده است.</p>
           ) : (
-            <ul className="grid gap-3">
-              {moodRows.map((r) => {
-                const m = MOODS.find((x) => x.id === r.mood_sticker);
-                return (
-                  <li key={r.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 rounded-2xl bg-secondary/60 p-3">
-                    <span className="text-2xl">{m?.emoji ?? "🙂"}</span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-bold">
-                        {m?.label ?? r.mood_sticker}
-                        {r.student_name ? ` — ${r.student_name}` : ""}
+            <>
+              <div className="mt-4 grid grid-cols-5 gap-2">
+                {MOODS.map((m) => {
+                  const count = moodRows.filter((r) => r.mood_sticker === m.id).length;
+                  return (
+                    <div
+                      key={m.id}
+                      className="flex flex-col items-center gap-1 rounded-2xl bg-secondary/60 p-2 text-center"
+                    >
+                      <span className="text-2xl">{m.emoji}</span>
+                      <span className="text-sm font-black">{toFa(count)}</span>
+                      <span className="text-[10px] leading-tight text-muted-foreground">{m.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <ul className="mt-4 grid gap-2">
+                {moodRows.map((r) => {
+                  const m = MOODS.find((x) => x.id === r.mood_sticker);
+                  return (
+                    <li
+                      key={r.id}
+                      className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/40 px-3 py-2 text-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-xl">{m?.emoji ?? "🙂"}</span>
+                        <span className="font-bold">{m?.label ?? r.mood_sticker}</span>
                       </span>
-                      <span className="text-balance-fa block text-sm text-muted-foreground">
-                        {r.mood_reason?.trim() ? `«${r.mood_reason}»` : "دلیلی نگفت."}
-                      </span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {formatFaDate(new Date(r.created_at).getTime())}
                       </span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           )}
         </section>
 
