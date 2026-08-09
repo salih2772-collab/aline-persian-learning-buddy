@@ -20,6 +20,8 @@ export type SessionSettings = {
   moralTopic: string;
   /** For stories: also weave content from the chosen book page into the story. */
   useBookInStory: boolean;
+  /** Silent (never shown to the child) analysis of the child's writing. */
+  spellingAnalysis: boolean;
 };
 
 export const DEFAULT_SETTINGS: SessionSettings = {
@@ -29,7 +31,9 @@ export const DEFAULT_SETTINGS: SessionSettings = {
   page: "۱۴",
   moralTopic: "مهربانی",
   useBookInStory: false,
+  spellingAnalysis: true,
 };
+
 
 export const MORAL_TOPICS = [
   "راستگویی",

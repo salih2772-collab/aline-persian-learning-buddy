@@ -190,7 +190,23 @@ function SettingsPage() {
             </>
           )}
 
+          <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]"
+              checked={form.spellingAnalysis}
+              onChange={(e) => update("spellingAnalysis", e.target.checked)}
+            />
+            <span>
+              <span className="block text-sm font-bold">تحلیل خاموش نوشتار کودک</span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                الین هرگز کودک را تصحیح نمی‌کند؛ فقط الگوی نوشتاری برای شما در داشبورد ثبت می‌شود.
+              </span>
+            </span>
+          </label>
+
           <div className="flex flex-wrap items-center gap-3">
+
             <button
               type="submit"
               className="rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
