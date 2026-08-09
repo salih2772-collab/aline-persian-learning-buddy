@@ -64,9 +64,17 @@ function ChatPage() {
   const endSession = useServerFn(completeSession);
   const checkSpelling = useServerFn(analyzeSpelling);
 
-  // Silent: results are never shown to the child, only stored for parents.
-  function silentSpellingCheck(id: string, text: string) {
-    if (!settings.spellingAnalysis || !text.trim()) return;
+  // Child messages are collected during the session and analysed once at the end
+  // (one API call per session instead of one per message). Never shown to the child.
+  const childTexts = useRef<string[]>([]);
+  const spellingDone = useRef(false);
+
+  function runBatchedSpellingCheck(id: string) {
+    if (spellingDone.current) return;
+    spellingDone.current = true;
+    if (!settings.spellingAnalysis) return;
+    const text = childTexts.current.join("\n").trim();
+    if (!text) return;
     void checkSpelling({ data: { sessionId: id, text } }).catch(() => {});
   }
 
@@ -156,6 +164,7 @@ function ChatPage() {
 
   /** Builds the end-of-session quiz; falls back to the closing screen if it fails. */
   async function startQuiz(id: string) {
+    runBatchedSpellingCheck(id);
     setThinking(true);
     try {
       const quiz = await makeQuiz({ data: { sessionId: id } });
@@ -187,7 +196,7 @@ function ChatPage() {
     if (!text || thinking || !sessionId) return;
     setInput("");
     push("child", text);
-    silentSpellingCheck(sessionId, text);
+    childTexts.current.push(text);
 
     const wasMoodReason = stage === "moodReason";
 
