@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import alineMascot from "@/assets/aline.png";
+import childCard from "@/assets/role-child.jpg";
+import parentCard from "@/assets/role-parent.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
