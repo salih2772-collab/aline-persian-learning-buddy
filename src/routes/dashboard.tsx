@@ -445,10 +445,11 @@ function DashboardPage() {
                   <span className="block truncate font-bold">{s.topic}</span>
                   <span className="block text-xs text-muted-foreground">
                     {s.date} · {s.type}
+                    {s.done ? " · تمام‌شده ✅" : ""}
                   </span>
                 </span>
                 <span className="shrink-0 rounded-full bg-success/15 px-3 py-1 text-xs font-black text-success">
-                  {toFa(s.score)}٪
+                  {s.score === null ? "بدون آزمون" : `${toFa(s.score)}٪`}
                 </span>
               </li>
             ))}
