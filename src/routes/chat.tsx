@@ -237,10 +237,10 @@ function ChatPage() {
                 height={512}
                 className="animate-float h-28 w-28"
               />
-              <p className="text-balance-fa text-muted-foreground">برای شروع، به الین سلام کن!</p>
+              <p className="text-balance-fa text-lg text-muted-foreground">برای شروع، به الین سلام کن!</p>
               <button
                 onClick={begin}
-                className="rounded-full bg-primary px-7 py-3 text-base font-black text-primary-foreground transition-opacity hover:opacity-90"
+                className="kid-target tap-bounce rounded-full bg-primary px-9 text-xl font-black text-primary-foreground hover:opacity-90"
               >
                 سلام الین! 👋
               </button>
@@ -261,7 +261,7 @@ function ChatPage() {
                   type="button"
                   onClick={retry}
                   disabled={thinking}
-                  className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"
+                  className="kid-target tap-bounce rounded-full bg-primary px-6 text-base font-black text-primary-foreground disabled:opacity-50"
                 >
                   دوباره امتحان کن 🔁
                 </button>
@@ -274,16 +274,19 @@ function ChatPage() {
 
         {stage === "mood" && !thinking ? (
           <div className="card-soft mt-4 p-4">
-            <p className="mb-3 text-center text-sm font-bold">حالت امروز چطوره؟</p>
-            <div className="grid grid-cols-5 gap-2">
+            <p className="mb-4 text-center text-xl font-black">حالت امروز چطوره؟</p>
+            <div className="flex flex-wrap items-start justify-center gap-3">
               {MOODS.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => pickMood(m.id)}
-                  className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-card p-2 transition-transform hover:-translate-y-1 hover:bg-secondary"
+                  aria-label={m.label}
+                  className="tap-bounce flex w-[68px] flex-col items-center gap-2 sm:w-[84px]"
                 >
-                  <span className="text-2xl sm:text-3xl">{m.emoji}</span>
-                  <span className="text-[10px] leading-tight text-muted-foreground sm:text-xs">{m.label}</span>
+                  <span className="grid h-[68px] w-[68px] place-items-center rounded-full border-2 border-border bg-secondary text-4xl shadow-soft transition-colors hover:bg-accent/30 sm:h-[84px] sm:w-[84px] sm:text-5xl">
+                    {m.emoji}
+                  </span>
+                  <span className="text-xs font-bold leading-tight text-muted-foreground sm:text-sm">{m.label}</span>
                 </button>
               ))}
             </div>
@@ -299,15 +302,15 @@ function ChatPage() {
         {stage === "done" ? (
           <div className="card-soft mt-4 flex flex-col items-center gap-3 p-6 text-center">
             <img src={alineMascot} alt="" width={512} height={512} className="animate-float h-24 w-24" />
-            <p className="text-lg font-black">آفرین {settings.childName || "دوست خوبم"}! 🌟</p>
-            <p className="text-balance-fa text-sm leading-7 text-muted-foreground">
+            <p className="text-2xl font-black">آفرین {settings.childName || "دوست خوبم"}! 🌟</p>
+            <p className="text-balance-fa text-base leading-8 text-muted-foreground">
               امروز با هم {settings.contentType === "lesson" ? "درس خوندیم" : "یک داستان قشنگ خوندیم"}، حرف زدیم
               {result ? ` و در آزمون ${toFa(result.correct)} از ${toFa(result.total)} سؤال رو درست جواب دادی` : ""}.
               فردا هم منتظرتم! 💛
             </p>
             <a
               href="/"
-              className="rounded-full bg-primary px-7 py-3 text-base font-black text-primary-foreground transition-opacity hover:opacity-90"
+              className="kid-target tap-bounce flex items-center rounded-full bg-primary px-9 text-xl font-black text-primary-foreground hover:opacity-90"
             >
               خداحافظ الین 👋
             </a>
@@ -321,12 +324,12 @@ function ChatPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="جوابت را بنویس..."
-                className="min-w-0 flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                className="kid-target min-w-0 flex-1 rounded-full border-2 border-input bg-card px-5 text-base outline-none focus:ring-2 focus:ring-ring"
               />
               <button
                 type="submit"
                 disabled={thinking}
-                className="shrink-0 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+                className="kid-target tap-bounce shrink-0 rounded-full bg-primary px-6 text-base font-black text-primary-foreground disabled:opacity-50"
               >
                 بفرست
               </button>
@@ -335,7 +338,7 @@ function ChatPage() {
               type="button"
               onClick={finishNow}
               disabled={thinking}
-              className="mt-2 self-center rounded-full border border-border bg-card px-5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+              className="kid-target tap-bounce mt-3 self-center rounded-full border-2 border-border bg-card px-7 text-base font-black text-muted-foreground hover:bg-secondary disabled:opacity-50"
             >
               تمام شد ✋
             </button>
@@ -356,7 +359,7 @@ function Bubble({ msg }: { msg: Msg }) {
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary text-base">🧒</span>
       )}
       <div
-        className={`max-w-[80%] whitespace-pre-line rounded-3xl px-4 py-3 text-sm leading-8 shadow-soft ${
+        className={`max-w-[82%] whitespace-pre-line rounded-3xl px-5 py-4 text-base leading-9 shadow-soft ${
           isChild
             ? "rounded-bl-md bg-bubble-child text-bubble-child-foreground"
             : "rounded-br-md border border-border bg-bubble-aline text-bubble-aline-foreground"
