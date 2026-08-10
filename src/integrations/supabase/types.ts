@@ -65,10 +65,38 @@ export type Database = {
         }
         Relationships: []
       }
+      children: {
+        Row: {
+          created_at: string
+          grade: string | null
+          id: string
+          name: string
+          parent_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          grade?: string | null
+          id?: string
+          name: string
+          parent_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          grade?: string | null
+          id?: string
+          name?: string
+          parent_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           created_at: string
           id: string
+          parent_id: string | null
           phase: string
           sender: string
           session_id: string
@@ -77,6 +105,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          parent_id?: string | null
           phase?: string
           sender: string
           session_id: string
@@ -85,6 +114,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          parent_id?: string | null
           phase?: string
           sender?: string
           session_id?: string
@@ -105,6 +135,7 @@ export type Database = {
           book: string | null
           chapter: string | null
           character_choice: string | null
+          child_id: string | null
           colour_choice: string | null
           completed_at: string | null
           content_type: string
@@ -114,6 +145,7 @@ export type Database = {
           mood_sticker: string | null
           moral_topic: string | null
           page: string | null
+          parent_id: string | null
           quiz_correct: number | null
           quiz_total: number | null
           status: string
@@ -123,6 +155,7 @@ export type Database = {
           book?: string | null
           chapter?: string | null
           character_choice?: string | null
+          child_id?: string | null
           colour_choice?: string | null
           completed_at?: string | null
           content_type?: string
@@ -132,6 +165,7 @@ export type Database = {
           mood_sticker?: string | null
           moral_topic?: string | null
           page?: string | null
+          parent_id?: string | null
           quiz_correct?: number | null
           quiz_total?: number | null
           status?: string
@@ -141,6 +175,7 @@ export type Database = {
           book?: string | null
           chapter?: string | null
           character_choice?: string | null
+          child_id?: string | null
           colour_choice?: string | null
           completed_at?: string | null
           content_type?: string
@@ -150,12 +185,21 @@ export type Database = {
           mood_sticker?: string | null
           moral_topic?: string | null
           page?: string | null
+          parent_id?: string | null
           quiz_correct?: number | null
           quiz_total?: number | null
           status?: string
           student_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sessions_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       spelling_errors: {
         Row: {
@@ -164,6 +208,7 @@ export type Database = {
           created_at: string
           error_type: string
           id: string
+          parent_id: string | null
           session_id: string
           written_form: string
         }
@@ -173,6 +218,7 @@ export type Database = {
           created_at?: string
           error_type: string
           id?: string
+          parent_id?: string | null
           session_id: string
           written_form: string
         }
@@ -182,6 +228,7 @@ export type Database = {
           created_at?: string
           error_type?: string
           id?: string
+          parent_id?: string | null
           session_id?: string
           written_form?: string
         }
