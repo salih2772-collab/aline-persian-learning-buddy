@@ -1,225 +1,164 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AlineHeader } from "@/components/aline-header";
-import { BookUploader } from "@/components/book-uploader";
-import { PagePreview } from "@/components/page-preview";
 import {
-  BOOKS,
-  DEFAULT_SETTINGS,
-  MORAL_TOPICS,
-  loadSettings,
-  saveSettings,
-  type SessionSettings,
-} from "@/lib/aline";
+  DEFAULT_PREFERENCES,
+  FONT_SIZES,
+  T,
+  applyPreferences,
+  loadPreferences,
+  savePreferences,
+  type AppPreferences,
+} from "@/lib/preferences";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "تنظیم جلسه | الین" },
+      { title: "تنظیمات برنامه | الین" },
       {
         name: "description",
-        content: "نام کودک، نوع محتوا (درس یا داستان)، کتاب، فصل و صفحه را برای جلسهٔ بعدی الین تنظیم کنید.",
+        content: "زبان فارسی یا انگلیسی، پوستهٔ روشن و تیره، اندازهٔ نوشته و صدای برنامهٔ الین را تنظیم کنید.",
       },
-      { property: "og:title", content: "تنظیم جلسه | الین" },
-      { property: "og:description", content: "والدین و معلمان جلسهٔ یادگیری کودک را اینجا تنظیم می‌کنند." },
+      { property: "og:title", content: "تنظیمات برنامه | الین" },
+      {
+        property: "og:description",
+        content: "زبان، جهت صفحه، پوسته، اندازهٔ نوشته و صدا — تنظیمات کلی الین.",
+      },
     ],
   }),
-  component: SettingsPage,
+  component: PreferencesPage,
 });
 
-const fieldClass =
-  "w-full rounded-xl border border-input bg-card px-4 py-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring";
-
-function SettingsPage() {
-  const [form, setForm] = useState<SessionSettings>(DEFAULT_SETTINGS);
+function PreferencesPage() {
+  const [prefs, setPrefs] = useState<AppPreferences>(DEFAULT_PREFERENCES);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setForm(loadSettings());
+    setPrefs(loadPreferences());
   }, []);
 
-  function update<K extends keyof SessionSettings>(key: K, value: SessionSettings[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
+  const t = T[prefs.language];
+
+  // Live preview: applying immediately shows the direction/theme flip.
+  function update(patch: Partial<AppPreferences>) {
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
     setSaved(false);
+    applyPreferences(next);
+  }
+
+  function save() {
+    savePreferences(prefs);
+    setSaved(true);
   }
 
   return (
     <div className="min-h-screen pb-16">
-      <AlineHeader subtitle="بخش والدین و معلمان" />
-      <main className="mx-auto w-full max-w-3xl px-4 pt-8">
-        <h1 className="text-3xl font-black">تنظیم جلسهٔ یادگیری</h1>
-        <p className="text-balance-fa mt-2 text-sm text-muted-foreground">
-          مشخص کنید الین در جلسهٔ بعدی چه چیزی برای کودک آماده کند.
-        </p>
+      <AlineHeader subtitle={t.title} />
+      <main className="mx-auto w-full max-w-2xl px-4 pt-8">
+        <h1 className="text-3xl font-black">{t.title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t.subtitle}</p>
 
-        <form
-          className="card-soft mt-6 grid gap-5 p-5 sm:p-7"
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveSettings(form);
-            setSaved(true);
-          }}
-        >
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">نام کودک</span>
-            <input
-              className={fieldClass}
-              value={form.childName}
-              onChange={(e) => update("childName", e.target.value)}
-              placeholder="مثلاً سارا"
-              required
+        <div className="card-soft mt-6 space-y-6 p-5">
+          <Field label={t.language}>
+            <Options
+              value={prefs.language}
+              options={[
+                { id: "fa", label: "فارسی 🇮🇷" },
+                { id: "en", label: "English 🇬🇧" },
+              ]}
+              onChange={(language) => update({ language })}
             />
-          </label>
+          </Field>
 
-          <fieldset className="grid gap-2">
-            <legend className="mb-2 text-sm font-bold">نوع محتوا</legend>
-            <div className="grid grid-cols-2 gap-3">
-              {(
-                [
-                  { id: "story", label: "داستان اخلاقی", emoji: "📖" },
-                  { id: "lesson", label: "محتوای درسی", emoji: "📚" },
-                ] as const
-              ).map((opt) => (
-                <button
-                  type="button"
-                  key={opt.id}
-                  onClick={() => update("contentType", opt.id)}
-                  className={`rounded-2xl border p-4 text-center transition-colors ${
-                    form.contentType === opt.id
-                      ? "border-primary bg-primary/10 font-bold text-primary"
-                      : "border-border bg-card text-muted-foreground hover:bg-secondary"
-                  }`}
-                >
-                  <span className="block text-2xl">{opt.emoji}</span>
-                  <span className="mt-1 block text-sm">{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          {form.contentType === "story" ? (
-            <>
-              <fieldset className="grid gap-2">
-                <legend className="mb-2 text-sm font-bold">موضوع اخلاقی داستان</legend>
-                <div className="flex flex-wrap gap-2">
-                  {MORAL_TOPICS.map((t) => (
-                    <button
-                      type="button"
-                      key={t}
-                      onClick={() => update("moralTopic", t)}
-                      className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                        form.moralTopic === t
-                          ? "border-primary bg-primary/10 font-bold text-primary"
-                          : "border-border bg-card text-muted-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-
-              <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]"
-                  checked={form.useBookInStory}
-                  onChange={(e) => update("useBookInStory", e.target.checked)}
-                />
-                <span>
-                  <span className="block text-sm font-bold">آموزش را هم داخل داستان بیاور</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    الین شمارش و جمع (ریاضی) یا کلمه‌های قرآنی همان صفحه را نامحسوس در داستان می‌گنجاند.
-                  </span>
-                </span>
-              </label>
-
-              {form.useBookInStory ? (
-                <>
-                  <label className="grid gap-2">
-                    <span className="text-sm font-bold">کتاب</span>
-                    <select className={fieldClass} value={form.book} onChange={(e) => update("book", e.target.value)}>
-                      {BOOKS.map((b) => (
-                        <option key={b} value={b}>
-                          {b}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="grid gap-2">
-                    <span className="text-sm font-bold">صفحه</span>
-                    <input
-                      className={fieldClass}
-                      value={form.page}
-                      onChange={(e) => update("page", e.target.value)}
-                      placeholder="۱۴"
-                    />
-                    <span className="text-xs text-muted-foreground">شماره‌ای که روی صفحه کتاب چاپ شده</span>
-                  </label>
-
-                  <PagePreview book={form.book} page={form.page} />
-                </>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <label className="grid gap-2">
-                <span className="text-sm font-bold">کتاب</span>
-                <select className={fieldClass} value={form.book} onChange={(e) => update("book", e.target.value)}>
-                  {BOOKS.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-sm font-bold">صفحه</span>
-                <input
-                  className={fieldClass}
-                  value={form.page}
-                  onChange={(e) => update("page", e.target.value)}
-                  placeholder="۱۴"
-                />
-                <span className="text-xs text-muted-foreground">شماره‌ای که روی صفحه کتاب چاپ شده</span>
-              </label>
-
-              <PagePreview book={form.book} page={form.page} />
-            </>
-          )}
-
-          <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]"
-              checked={form.spellingAnalysis}
-              onChange={(e) => update("spellingAnalysis", e.target.checked)}
+          <Field label={t.theme}>
+            <Options
+              value={prefs.theme}
+              options={[
+                { id: "light", label: `☀️ ${t.light}` },
+                { id: "dark", label: `🌙 ${t.dark}` },
+              ]}
+              onChange={(theme) => update({ theme })}
             />
-            <span>
-              <span className="block text-sm font-bold">تحلیل خاموش نوشتار کودک</span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                الین هرگز کودک را تصحیح نمی‌کند؛ فقط الگوی نوشتاری برای شما در داشبورد ثبت می‌شود.
-              </span>
-            </span>
-          </label>
+          </Field>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <Field label={t.fontSize}>
+            <Options
+              value={prefs.fontSize}
+              options={FONT_SIZES.map((f) => ({
+                id: f.id,
+                label: prefs.language === "fa" ? f.label : f.labelEn,
+              }))}
+              onChange={(fontSize) => update({ fontSize })}
+            />
+          </Field>
 
-            <button
-              type="submit"
-              className="rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              ذخیرهٔ تنظیمات
-            </button>
-            {saved ? <span className="text-sm font-bold text-success">ذخیره شد ✓</span> : null}
-          </div>
-        </form>
+          <Field label={t.sound}>
+            <Options
+              value={prefs.sound ? "on" : "off"}
+              options={[
+                { id: "on", label: `🔊 ${t.soundOn}` },
+                { id: "off", label: `🔇 ${t.soundOff}` },
+              ]}
+              onChange={(v) => update({ sound: v === "on" })}
+            />
+          </Field>
+        </div>
 
-        <BookUploader book={form.book} />
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <button
+            onClick={save}
+            className="rounded-full bg-primary px-6 py-3 text-sm font-black text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {t.save}
+          </button>
+          <Link
+            to="/dashboard"
+            className="rounded-full border border-border px-5 py-3 text-sm font-bold transition-colors hover:bg-secondary"
+          >
+            {t.back}
+          </Link>
+          {saved ? <span className="text-sm font-bold text-primary">{t.saved}</span> : null}
+        </div>
       </main>
+    </div>
+  );
+}
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-bold">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function Options<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onChange(o.id)}
+          className={`rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
+            value === o.id
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card hover:bg-secondary"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
