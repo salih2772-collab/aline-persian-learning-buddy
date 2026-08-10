@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Phase } from "./aline-prompt.server";
 
@@ -19,10 +20,10 @@ const CharacterInput = z.object({
 
 /** Stores the child's play choices for this session. Purely a record. */
 export const saveCharacterChoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CharacterInput.parse(input))
-  .handler(async ({ data }) => {
-    const { createServerSupabase } = await import("./supabase.server");
-    const supabase = createServerSupabase();
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
     const { sessionId, ...fields } = data;
     const { error } = await supabase.from("sessions").update(fields).eq("id", sessionId);
     if (error) throw new Error(error.message);
@@ -31,10 +32,10 @@ export const saveCharacterChoice = createServerFn({ method: "POST" })
 
 
 export const createSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CreateSessionInput.parse(input))
-  .handler(async ({ data }) => {
-    const { createServerSupabase } = await import("./supabase.server");
-    const supabase = createServerSupabase();
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
     const { data: row, error } = await supabase
       .from("sessions")
       .insert({ ...data, status: "active" })
@@ -66,8 +67,9 @@ function wantsToStop(text: string) {
 
 
 export const chat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ChatInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { createServerSupabase } = await import("./supabase.server");
     const { buildSystemPrompt, nextPhase, compactHistory, stripMarkdown, isDistressMessage } =
       await import("./aline-prompt.server");
@@ -257,10 +259,10 @@ const CompleteSessionInput = z.object({
 
 /** Marks the session finished so the parent dashboard shows it as completed. */
 export const completeSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CompleteSessionInput.parse(input))
-  .handler(async ({ data }) => {
-    const { createServerSupabase } = await import("./supabase.server");
-    const supabase = createServerSupabase();
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
     const { error } = await supabase
       .from("sessions")
       .update({
@@ -279,8 +281,9 @@ const QuizInput = z.object({ sessionId: z.string().uuid() });
 
 /** Builds a 3-question multiple-choice quiz from the content of this session. */
 export const generateQuiz = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => QuizInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { createServerSupabase } = await import("./supabase.server");
     const { buildQuizPrompt } = await import("./aline-prompt.server");
     const { loadPageContent } = await import("./book-page.server");
@@ -373,10 +376,10 @@ const ExtractBookInput = z.object({
 
 /** Reads an uploaded textbook PDF from storage and stores its text page by page. */
 export const extractBook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ExtractBookInput.parse(input))
-  .handler(async ({ data }) => {
-    const { createServerSupabase } = await import("./supabase.server");
-    const supabase = createServerSupabase();
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
 
     const { data: file, error } = await supabase.storage.from("textbooks").download(data.path);
     if (error || !file) throw new Error(error?.message ?? "فایل پیدا نشد.");
