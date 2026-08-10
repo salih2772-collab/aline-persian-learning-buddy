@@ -15,7 +15,8 @@ import {
   YAxis,
 } from "recharts";
 import { AlineHeader } from "@/components/aline-header";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getDashboardData } from "@/lib/data.functions";
 import {
   MOODS,
   MOOD_DISTRIBUTION,
