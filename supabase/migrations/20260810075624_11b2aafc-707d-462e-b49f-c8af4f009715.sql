@@ -1,0 +1,1 @@
+UPDATE public.spelling_errors SET error_type = 'گفتاری' WHERE id IN ('0c550601-22a7-4835-af12-0995edb11dae','64d3fe54-15cf-4080-a932-2a47429726e4','3b8de489-b1c6-4345-9bae-b4d5022b4160','c8f63e0e-0bf5-4b14-ae3b-3eb532f95fdb','6d820428-d3d8-44df-bbdd-f3e70d8c6049','a507250f-f8c2-4c76-8637-0958a00b8320','659b081f-d06d-41a3-b70b-f86115a0b94f');
