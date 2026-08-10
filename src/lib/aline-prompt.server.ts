@@ -26,6 +26,9 @@ export function buildSystemPrompt(
   shortAnswer = false,
   storyTold = false,
   distress = false,
+  distressRepeat = false,
+  distressFollowUp = false,
+
 ) {
   const name = session.student_name?.trim() || "دوست خوبم";
   const gentle = isGentleMood(session.mood_sticker);
