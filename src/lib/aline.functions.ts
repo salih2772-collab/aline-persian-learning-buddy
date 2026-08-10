@@ -27,7 +27,8 @@ export const saveCharacterChoice = createServerFn({ method: "POST" })
     const { error } = await supabase.from("sessions").update(fields).eq("id", sessionId);
     if (error) throw new Error(error.message);
     return { ok: true };
-});
+  });
+
 
 export const createSession = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateSessionInput.parse(input))
