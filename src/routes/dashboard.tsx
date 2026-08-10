@@ -15,6 +15,12 @@ import {
   YAxis,
 } from "recharts";
 import { AlineHeader } from "@/components/aline-header";
+import {
+  CharacterAvatar,
+  characterName,
+  colourName,
+  type CharacterId,
+} from "@/components/character-avatar";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboardData } from "@/lib/data.functions";
 import {
@@ -80,11 +86,20 @@ type DoneRow = {
   created_at: string;
 };
 
+type CharacterRow = {
+  id: string;
+  student_name: string;
+  character_choice: string | null;
+  colour_choice: string | null;
+  created_at: string;
+};
+
 function DashboardPage() {
   const [quizzes, setQuizzes] = useState<QuizResult[]>([]);
   const [moodRows, setMoodRows] = useState<MoodRow[]>([]);
   const [spelling, setSpelling] = useState<SpellingRow[]>([]);
   const [doneRows, setDoneRows] = useState<DoneRow[]>([]);
+  const [characterRows, setCharacterRows] = useState<CharacterRow[]>([]);
 
   const loadData = useServerFn(getDashboardData);
 
@@ -94,6 +109,7 @@ function DashboardPage() {
       setMoodRows((res.moods as MoodRow[]) ?? []);
       setDoneRows((res.done as DoneRow[]) ?? []);
       setSpelling((res.spelling as SpellingRow[]) ?? []);
+      setCharacterRows((res.characters as CharacterRow[]) ?? []);
     });
   }, [loadData]);
 
@@ -350,6 +366,40 @@ function DashboardPage() {
                 })}
               </ul>
             </>
+          )}
+        </section>
+
+        <section className="card-soft mt-5 p-4 sm:p-6">
+          <h2 className="text-lg font-black">شخصیت و رنگ انتخابی</h2>
+          <p className="text-balance-fa mt-1 text-xs text-muted-foreground">
+            فقط یک یادداشت بازیگوشانه از انتخاب کودک است؛ رنگ هیچ معنای احساسی یا روان‌شناختی ندارد.
+          </p>
+          {characterRows.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">هنوز شخصیتی انتخاب نشده است.</p>
+          ) : (
+            <ul className="mt-4 grid gap-2">
+              {characterRows.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/40 px-3 py-2 text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <CharacterAvatar
+                      character={(r.character_choice as CharacterId) ?? "mahtab"}
+                      colour={r.colour_choice}
+                      className="h-8 w-8"
+                    />
+                    <span className="font-bold">
+                      شخصیت {characterName(r.character_choice) ?? "—"}، رنگ{" "}
+                      {colourName(r.colour_choice) ?? "—"}
+                    </span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatFaDate(new Date(r.created_at).getTime())}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 
