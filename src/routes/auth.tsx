@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AlineHeader } from "@/components/aline-header";
 
 export const Route = createFileRoute("/auth")({
+  // Auth state lives in localStorage, so this screen renders client-side only.
+  ssr: false,
   head: () => ({
     meta: [
       { title: "ورود والدین | الین" },
@@ -46,7 +48,7 @@ function AuthPage() {
         });
         if (err) throw err;
         if (!data.session) {
-          setNotice("ایمیل تأیید برایتان ارسال شد. روی پیوند داخل ایمیل بزنید و بعد وارد شوید.");
+          setNotice("حساب ساخته شد. حالا با همان ایمیل و رمز وارد شوید.");
           return;
         }
       } else {
