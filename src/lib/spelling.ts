@@ -69,9 +69,85 @@ const COLLOQUIAL = new Set([
   "بیرونه",
 ]);
 
+/** Spoken stem contractions kids write (left = spoken, right = formal). */
+const SPOKEN_STEMS: [RegExp, string][] = [
+  [/بزار/g, "بگذار"],
+  [/بذار/g, "بگذار"],
+  [/زاشت/g, "گذاشت"],
+  [/ذاشت/g, "گذاشت"],
+  [/تونست/g, "توانست"],
+  [/تون/g, "توان"],
+  [/خواس/g, "خواست"],
+  [/رو$/g, "را"],
+];
+
+/** Verb endings: spoken → formal (کنه→کند، گم→گویم، رن→روند). */
+const SPOKEN_ENDINGS: [string, string[]][] = [
+  ["ه", ["د", "هد"]],
+  ["ن", ["ند"]],
+  ["م", ["یم", "ویم", "هم"]],
+  ["ی", ["ید", "یی"]],
+  ["یم", ["هیم", "ویم"]],
+  ["ید", ["هید"]],
+];
+
+function isSubsequence(short: string, long: string) {
+  let i = 0;
+  for (const ch of long) if (ch === short[i]) i++;
+  return i === short.length;
+}
+
+/**
+ * True when `written` is a common spoken contraction of the verb / pronoun form
+ * in `correct` (می‌کنه ← می‌کند، می‌گم ← می‌گویم، همش ← همه‌اش).
+ */
+function isSpokenContraction(written: string, correct: string) {
+  const w0 = stripSpaces(written);
+  const c = stripSpaces(correct);
+  if (!w0 || !c || w0 === c || w0.length >= c.length + 1) return false;
+
+  // Pronoun clitic dropped a linking ا/ی/ه (جاش ← جایش، همش ← همه‌اش).
+  if (/[شمت]$/.test(w0)) {
+    for (const k of [1, 2]) {
+      const removed = c.slice(c.length - 1 - k, c.length - 1);
+      if (
+        c.slice(-1) === w0.slice(-1) &&
+        c.slice(0, -1 - k) === w0.slice(0, -1) &&
+        removed.length === k &&
+        [...removed].every((ch) => "اهی".includes(ch))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Verb contractions: می‌کنه ← می‌کند، می‌گم ← می‌گویم.
+  if (!(/^(نمی|می|ب|ن)/.test(w0) && w0.length > 2)) return false;
+
+  const candidates = new Set<string>([w0]);
+  let stemmed = w0;
+  for (const [re, rep] of SPOKEN_STEMS) stemmed = stemmed.replace(re, rep);
+  candidates.add(stemmed);
+
+  for (const base of [...candidates]) {
+    for (const [spoken, formals] of SPOKEN_ENDINGS) {
+      if (!base.endsWith(spoken)) continue;
+      for (const f of formals) candidates.add(base.slice(0, -spoken.length) + f);
+    }
+  }
+
+  for (const cand of candidates) {
+    if (cand === c) return true;
+    if (cand.length < c.length && isSubsequence(cand, c)) return true;
+  }
+  return false;
+
+}
+
 /** Heuristic: spoken "ون/وم/وی" where formal Persian has "ان/ام/ای" (خونه→خانه، نون→نان). */
 function looksColloquial(written: string, correct: string) {
-  if (COLLOQUIAL.has(written)) return true;
+  if (COLLOQUIAL.has(written) || COLLOQUIAL.has(stripSpaces(written))) return true;
+  if (isSpokenContraction(written, correct)) return true;
   if (written.length !== correct.length) return false;
   let diffs = 0;
   let spokenVowel = 0;
@@ -85,6 +161,7 @@ function looksColloquial(written: string, correct: string) {
   }
   return diffs > 0 && diffs === spokenVowel;
 }
+
 
 /**
  * Decides the single correct category for one issue.
