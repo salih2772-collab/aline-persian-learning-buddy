@@ -23,6 +23,9 @@ import {
 } from "@/components/character-avatar";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboardData } from "@/lib/data.functions";
+import { listChildren, type Child } from "@/lib/children.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "@tanstack/react-router";
 import {
   MOODS,
   MOOD_DISTRIBUTION,
@@ -101,17 +104,31 @@ function DashboardPage() {
   const [doneRows, setDoneRows] = useState<DoneRow[]>([]);
   const [characterRows, setCharacterRows] = useState<CharacterRow[]>([]);
 
+  const [children, setChildren] = useState<Child[]>([]);
+  const [childId, setChildId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
   const loadData = useServerFn(getDashboardData);
+  const loadChildren = useServerFn(listChildren);
+
+  useEffect(() => {
+    void loadChildren().then(setChildren).catch(() => {});
+  }, [loadChildren]);
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    void navigate({ to: "/auth", replace: true });
+  }
 
   useEffect(() => {
     setQuizzes(loadQuizResults());
-    void loadData({}).then((res) => {
+    void loadData({ data: { childId } }).then((res) => {
       setMoodRows((res.moods as MoodRow[]) ?? []);
       setDoneRows((res.done as DoneRow[]) ?? []);
       setSpelling((res.spelling as SpellingRow[]) ?? []);
       setCharacterRows((res.characters as CharacterRow[]) ?? []);
     });
-  }, [loadData]);
+  }, [loadData, childId]);
 
 
   // Re-classify with the current rules and keep each word in exactly one category.
@@ -193,7 +210,37 @@ function DashboardPage() {
           >
             تنظیمات برنامه 🎛️
           </Link>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="inline-flex rounded-full border border-border px-5 py-2.5 text-sm font-bold transition-colors hover:bg-secondary"
+          >
+            خروج از حساب 🚪
+          </button>
         </div>
+
+        {children.length > 0 ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-bold text-muted-foreground">کودک:</span>
+            <button
+              type="button"
+              onClick={() => setChildId(null)}
+              className={`rounded-full border px-4 py-2 text-sm ${childId === null ? "border-primary bg-primary/10 font-bold text-primary" : "border-border bg-card text-muted-foreground"}`}
+            >
+              همه
+            </button>
+            {children.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setChildId(c.id)}
+                className={`rounded-full border px-4 py-2 text-sm ${childId === c.id ? "border-primary bg-primary/10 font-bold text-primary" : "border-border bg-card text-muted-foreground"}`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="دقیقهٔ یادگیری" value={toFa(totalMinutes)} emoji="⏱️" />
