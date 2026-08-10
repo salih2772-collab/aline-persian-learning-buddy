@@ -225,7 +225,9 @@ export const chat = createServerFn({ method: "POST" })
         .eq("id", data.sessionId);
     }
 
-    return { phase, message, question, wrapUp };
+    // After a harm disclosure the session ends gently, with no quiz.
+    return { phase, message, question, wrapUp, skipQuiz: harmMode };
+
   });
 
 const CompleteSessionInput = z.object({
