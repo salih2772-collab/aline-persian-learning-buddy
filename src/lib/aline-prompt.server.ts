@@ -28,8 +28,10 @@ export function buildSystemPrompt(
   distress = false,
   distressRepeat = false,
   distressFollowUp = false,
+  harmMode = false,
 
 ) {
+
   const name = session.student_name?.trim() || "دوست خوبم";
   const gentle = isGentleMood(session.mood_sticker);
   const isStory = session.content_type !== "lesson";
