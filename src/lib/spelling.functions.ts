@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const AnalyzeInput = z.object({
@@ -11,15 +12,15 @@ const AnalyzeInput = z.object({
  * Never returns anything shown to the child.
  */
 export const analyzeSpelling = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => AnalyzeInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const text = data.text.trim();
     if (text.length < 2) return { stored: 0 };
 
 
-    const { createServerSupabase } = await import("./supabase.server");
     const { buildSpellingPrompt, parseSpellingIssues } = await import("./spelling.server");
-    const supabase = createServerSupabase();
+    const supabase = context.supabase;
 
     const { data: session } = await supabase
       .from("sessions")
@@ -55,6 +56,7 @@ export const analyzeSpelling = createServerFn({ method: "POST" })
 
     const { error } = await supabase.from("spelling_errors").insert(
       issues.map((i) => ({
+        parent_id: context.userId,
         session_id: data.sessionId,
         child_name: session?.student_name ?? "",
         ...i,
