@@ -86,32 +86,17 @@ function DashboardPage() {
   const [spelling, setSpelling] = useState<SpellingRow[]>([]);
   const [doneRows, setDoneRows] = useState<DoneRow[]>([]);
 
+  const loadData = useServerFn(getDashboardData);
+
   useEffect(() => {
     setQuizzes(loadQuizResults());
-    void supabase
-      .from("sessions")
-      // mood_reason is intentionally NOT fetched: the child's own words stay private.
-      .select("id, student_name, mood_sticker, created_at")
-      .not("mood_sticker", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(8)
-      .then(({ data }) => setMoodRows((data as MoodRow[] | null) ?? []));
-    void supabase
-      .from("sessions")
-      .select(
-        "id, content_type, moral_topic, book, page, mood_sticker, quiz_correct, quiz_total, completed_at, created_at",
-      )
-      .eq("status", "completed")
-      .order("completed_at", { ascending: false })
-      .limit(8)
-      .then(({ data }) => setDoneRows((data as DoneRow[] | null) ?? []));
-    void supabase
-      .from("spelling_errors")
-      .select("id, child_name, written_form, correct_form, error_type, created_at")
-      .order("created_at", { ascending: false })
-      .limit(60)
-      .then(({ data }) => setSpelling((data as SpellingRow[] | null) ?? []));
-  }, []);
+    void loadData({}).then((res) => {
+      setMoodRows((res.moods as MoodRow[]) ?? []);
+      setDoneRows((res.done as DoneRow[]) ?? []);
+      setSpelling((res.spelling as SpellingRow[]) ?? []);
+    });
+  }, [loadData]);
+
 
   // Re-classify with the current rules and keep each word in exactly one category.
   const normalized = dedupeIssues(
