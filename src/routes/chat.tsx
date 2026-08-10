@@ -191,10 +191,11 @@ function ChatPage() {
     if (!sessionId || thinking) return;
     push("child", "تمام شد ✋");
     await run(async () => {
-      await talk(sessionId, "دیگه کافیه، تمام شد.", null, null, true);
-      await startQuiz(sessionId);
+      const reply = await talk(sessionId, "دیگه کافیه، تمام شد.", null, null, true);
+      await startQuiz(sessionId, reply.skipQuiz);
     });
   }
+
 
   async function sendFree(e: React.FormEvent) {
     e.preventDefault();
@@ -214,7 +215,8 @@ function ChatPage() {
       }
 
       const reply = await talk(sessionId, text);
-      if (reply.wrapUp) await startQuiz(sessionId);
+      if (reply.wrapUp) await startQuiz(sessionId, reply.skipQuiz);
+
     });
   }
 
