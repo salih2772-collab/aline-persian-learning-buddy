@@ -106,10 +106,23 @@ function isSpokenContraction(written: string, correct: string) {
   const c = stripSpaces(correct);
   if (!w0 || !c || w0 === c || w0.length >= c.length + 1) return false;
 
-  // Only verbs (می/ن/ب prefix) or pronoun-clitic words qualify.
-  const verbish = /^(نمی|می|ب|ن)/.test(w0) && w0.length > 2;
-  const clitic = /[شمت]$/.test(w0) && new RegExp(`ا?[${w0.slice(-1)}]$`).test(c);
-  if (!verbish && !clitic) return false;
+  // Pronoun clitic dropped a linking ا/ی/ه (جاش ← جایش، همش ← همه‌اش).
+  if (/[شمت]$/.test(w0)) {
+    for (const k of [1, 2]) {
+      const removed = c.slice(c.length - 1 - k, c.length - 1);
+      if (
+        c.slice(-1) === w0.slice(-1) &&
+        c.slice(0, -1 - k) === w0.slice(0, -1) &&
+        removed.length === k &&
+        [...removed].every((ch) => "اهی".includes(ch))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Verb contractions: می‌کنه ← می‌کند، می‌گم ← می‌گویم.
+  if (!(/^(نمی|می|ب|ن)/.test(w0) && w0.length > 2)) return false;
 
   const candidates = new Set<string>([w0]);
   let stemmed = w0;
@@ -128,6 +141,7 @@ function isSpokenContraction(written: string, correct: string) {
     if (cand.length < c.length && isSubsequence(cand, c)) return true;
   }
   return false;
+
 }
 
 /** Heuristic: spoken "ون/وم/وی" where formal Persian has "ان/ام/ای" (خونه→خانه، نون→نان). */
