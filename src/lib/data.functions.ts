@@ -1,26 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 /** Book upload status + page offsets for the parent uploader screen. */
-export const getBookStats = createServerFn({ method: "GET" }).handler(async () => {
-  const { createServerSupabase } = await import("./supabase.server");
-  const supabase = createServerSupabase();
-  const [{ data: pages }, { data: books }] = await Promise.all([
-    supabase.from("book_pages").select("book"),
-    supabase.from("books").select("name, page_offset"),
-  ]);
-  const counts: Record<string, number> = {};
-  for (const row of pages ?? []) counts[row.book] = (counts[row.book] ?? 0) + 1;
-  const offsets: Record<string, number> = {};
-  for (const row of books ?? []) offsets[row.name] = row.page_offset;
-  return { counts, offsets };
-});
+export const getBookStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabase = context.supabase;
+    const [{ data: pages }, { data: books }] = await Promise.all([
+      supabase.from("book_pages").select("book"),
+      supabase.from("books").select("name, page_offset"),
+    ]);
+    const counts: Record<string, number> = {};
+    for (const row of pages ?? []) counts[row.book] = (counts[row.book] ?? 0) + 1;
+    const offsets: Record<string, number> = {};
+    for (const row of books ?? []) offsets[row.name] = row.page_offset;
+    return { counts, offsets };
+  });
 
 export const saveBookOffset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ book: z.string().min(1).max(120), offset: z.number().int().min(-500).max(500) }).parse(input),
   )
   .handler(async ({ data }) => {
+    // Textbooks are shared national data, written only by trusted server code.
     const { createServerSupabase } = await import("./supabase.server");
     const supabase = createServerSupabase();
     const { error } = await supabase
@@ -32,6 +36,7 @@ export const saveBookOffset = createServerFn({ method: "POST" })
 
 /** Creates a one-time signed upload target in the private textbooks bucket. */
 export const createTextbookUploadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ fileName: z.string().min(1).max(200) }).parse(input),
   )
@@ -49,13 +54,13 @@ export const createTextbookUploadUrl = createServerFn({ method: "POST" })
 
 /** First characters of the matched page, for the session setup preview. */
 export const getPagePreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ book: z.string().min(1).max(120), page: z.string().min(1).max(10) }).parse(input),
   )
-  .handler(async ({ data }) => {
-    const { createServerSupabase } = await import("./supabase.server");
+  .handler(async ({ data, context }) => {
     const { toEn } = await import("./aline");
-    const supabase = createServerSupabase();
+    const supabase = context.supabase;
     const printed = Number(toEn(data.page));
     if (!Number.isFinite(printed)) return null;
     const { data: bookRow } = await supabase
@@ -73,42 +78,73 @@ export const getPagePreview = createServerFn({ method: "POST" })
     return { pdfPage, text: row?.content?.trim().slice(0, 150) || null };
   });
 
-/** Aggregated parent dashboard data. The child's own words stay private. */
-export const getDashboardData = createServerFn({ method: "GET" }).handler(async () => {
-  const { createServerSupabase } = await import("./supabase.server");
-  const supabase = createServerSupabase();
-  const [{ data: moods }, { data: done }, { data: spelling }, { data: characters }] = await Promise.all([
-    supabase
-      .from("sessions")
-      // mood_reason is intentionally NOT fetched: the child's own words stay private.
-      .select("id, student_name, mood_sticker, created_at")
-      .not("mood_sticker", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(8),
-    supabase
-      .from("sessions")
-      .select(
-        "id, content_type, moral_topic, book, page, mood_sticker, quiz_correct, quiz_total, completed_at, created_at",
-      )
-      .eq("status", "completed")
-      .order("completed_at", { ascending: false })
-      .limit(8),
-    supabase
+/**
+ * Aggregated parent dashboard data — scoped to the signed-in parent by RLS and
+ * optionally to a single child. The child's own words stay private.
+ */
+export const getDashboardData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ childId: z.string().uuid().nullable().default(null) }).parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
+    const byChild = <T extends { eq: (c: string, v: string) => T }>(q: T) =>
+      data.childId ? q.eq("child_id", data.childId) : q;
+
+    const [{ data: moods }, { data: done }, { data: characters }] = await Promise.all([
+      byChild(
+        supabase
+          .from("sessions")
+          // mood_reason is intentionally NOT fetched: the child's own words stay private.
+          .select("id, student_name, mood_sticker, created_at")
+          .not("mood_sticker", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(8) as never,
+      ) as never as { data: { id: string; student_name: string; mood_sticker: string; created_at: string }[] | null },
+      byChild(
+        supabase
+          .from("sessions")
+          .select(
+            "id, content_type, moral_topic, book, page, mood_sticker, quiz_correct, quiz_total, completed_at, created_at",
+          )
+          .eq("status", "completed")
+          .order("completed_at", { ascending: false })
+          .limit(8) as never,
+      ) as never as { data: Record<string, unknown>[] | null },
+      byChild(
+        supabase
+          .from("sessions")
+          .select("id, student_name, character_choice, colour_choice, created_at")
+          .not("character_choice", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(8) as never,
+      ) as never as { data: Record<string, unknown>[] | null },
+    ]);
+
+    let spellingQuery = supabase
       .from("spelling_errors")
-      .select("id, child_name, written_form, correct_form, error_type, created_at")
+      .select("id, child_name, written_form, correct_form, error_type, created_at, session_id")
       .order("created_at", { ascending: false })
-      .limit(60),
-    supabase
-      .from("sessions")
-      .select("id, student_name, character_choice, colour_choice, created_at")
-      .not("character_choice", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(8),
-  ]);
-  return {
-    moods: moods ?? [],
-    done: done ?? [],
-    spelling: spelling ?? [],
-    characters: characters ?? [],
-  };
-});
+      .limit(60);
+
+    if (data.childId) {
+      const { data: childSessions } = await supabase
+        .from("sessions")
+        .select("id")
+        .eq("child_id", data.childId);
+      const ids = (childSessions ?? []).map((s) => s.id);
+      if (ids.length === 0) {
+        return { moods: moods ?? [], done: done ?? [], spelling: [], characters: characters ?? [] };
+      }
+      spellingQuery = spellingQuery.in("session_id", ids);
+    }
+    const { data: spelling } = await spellingQuery;
+
+    return {
+      moods: moods ?? [],
+      done: done ?? [],
+      spelling: spelling ?? [],
+      characters: characters ?? [],
+    };
+  });
