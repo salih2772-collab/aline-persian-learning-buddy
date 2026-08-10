@@ -154,7 +154,9 @@ export const chat = createServerFn({ method: "POST" })
           distress,
           distressRepeat,
           distressFollowUp,
+          harmMode,
         ),
+
 
       },
       ...compactHistory(past),
