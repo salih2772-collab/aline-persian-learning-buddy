@@ -20,7 +20,7 @@ import {
   type SessionSettings,
 } from "@/lib/aline";
 
-export const Route = createFileRoute("/chat")({
+export const Route = createFileRoute("/_authenticated/chat")({
   head: () => ({
     meta: [
       { title: "گفت‌وگو با الین | داستان و درس" },
@@ -141,6 +141,7 @@ function ChatPage() {
         const s = await startSession({
           data: {
             student_name: settings.childName,
+            child_id: settings.childId,
             content_type: settings.contentType,
             book: useBook ? settings.book : null,
             chapter: null,

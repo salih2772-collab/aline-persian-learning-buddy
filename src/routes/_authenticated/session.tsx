@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { addChild, deleteChild, listChildren, type Child } from "@/lib/children.functions";
+
 import { AlineHeader } from "@/components/aline-header";
 import { BookUploader } from "@/components/book-uploader";
 import { PagePreview } from "@/components/page-preview";
@@ -12,7 +15,7 @@ import {
   type SessionSettings,
 } from "@/lib/aline";
 
-export const Route = createFileRoute("/session")({
+export const Route = createFileRoute("/_authenticated/session")({
   head: () => ({
     meta: [
       { title: "تنظیم جلسه | الین" },
@@ -33,14 +36,47 @@ const fieldClass =
 function SettingsPage() {
   const [form, setForm] = useState<SessionSettings>(DEFAULT_SETTINGS);
   const [saved, setSaved] = useState(false);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [newName, setNewName] = useState("");
+  const [newGrade, setNewGrade] = useState("");
+  const [childError, setChildError] = useState<string | null>(null);
+
+  const fetchChildren = useServerFn(listChildren);
+  const createChild = useServerFn(addChild);
+  const removeChild = useServerFn(deleteChild);
 
   useEffect(() => {
     setForm(loadSettings());
   }, []);
 
+  useEffect(() => {
+    void fetchChildren().then(setChildren).catch(() => {});
+  }, [fetchChildren]);
+
   function update<K extends keyof SessionSettings>(key: K, value: SessionSettings[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     setSaved(false);
+  }
+
+  function pickChild(child: Child) {
+    setForm((f) => ({ ...f, childId: child.id, childName: child.name }));
+    setSaved(false);
+  }
+
+  async function submitChild(e: React.FormEvent) {
+    e.preventDefault();
+    const name = newName.trim();
+    if (!name) return;
+    setChildError(null);
+    try {
+      const child = await createChild({ data: { name, grade: newGrade.trim() || null } });
+      setChildren((c) => [...c, child]);
+      pickChild(child);
+      setNewName("");
+      setNewGrade("");
+    } catch (err) {
+      setChildError(err instanceof Error ? err.message : "افزودن کودک ممکن نشد.");
+    }
   }
 
   return (
@@ -52,6 +88,70 @@ function SettingsPage() {
           مشخص کنید الین در جلسهٔ بعدی چه چیزی برای کودک آماده کند.
         </p>
 
+        <section className="card-soft mt-6 grid gap-4 p-5 sm:p-7">
+          <h2 className="text-lg font-black">کودکان شما</h2>
+          {children.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {children.map((c) => (
+                <span key={c.id} className="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => pickChild(c)}
+                    className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                      form.childId === c.id
+                        ? "border-primary bg-primary/10 font-bold text-primary"
+                        : "border-border bg-card text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {c.name}
+                    {c.grade ? ` — ${c.grade}` : ""}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`حذف ${c.name}`}
+                    onClick={() => {
+                      void removeChild({ data: { id: c.id } })
+                        .then(() => {
+                          setChildren((list) => list.filter((x) => x.id !== c.id));
+                          if (form.childId === c.id) update("childId", null);
+                        })
+                        .catch(() => {});
+                    }}
+                    className="text-sm text-muted-foreground hover:text-destructive"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">هنوز کودکی اضافه نکرده‌اید.</p>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <input
+              className={fieldClass}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="نام کودک، مثلاً سارا"
+            />
+            <input
+              className={fieldClass}
+              value={newGrade}
+              onChange={(e) => setNewGrade(e.target.value)}
+              placeholder="پایه، مثلاً دوم دبستان"
+            />
+            <button
+              type="button"
+              onClick={(e) => void submitChild(e)}
+              className="rounded-xl bg-accent px-5 py-3 text-sm font-bold text-accent-foreground"
+            >
+              افزودن کودک ➕
+            </button>
+          </div>
+          {childError ? <p className="text-sm font-bold text-destructive">{childError}</p> : null}
+        </section>
+
         <form
           className="card-soft mt-6 grid gap-5 p-5 sm:p-7"
           onSubmit={(e) => {
@@ -61,7 +161,7 @@ function SettingsPage() {
           }}
         >
           <label className="grid gap-2">
-            <span className="text-sm font-bold">نام کودک</span>
+            <span className="text-sm font-bold">نام کودک این جلسه</span>
             <input
               className={fieldClass}
               value={form.childName}
@@ -70,6 +170,7 @@ function SettingsPage() {
               required
             />
           </label>
+
 
           <fieldset className="grid gap-2">
             <legend className="mb-2 text-sm font-bold">نوع محتوا</legend>

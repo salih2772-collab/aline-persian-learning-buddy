@@ -13,6 +13,8 @@ export const MOODS: { id: Mood; emoji: string; label: string }[] = [
 export type ContentType = "lesson" | "story";
 
 export type SessionSettings = {
+  /** Which of the parent's children this session is for. */
+  childId: string | null;
   childName: string;
   contentType: ContentType;
   book: string;
@@ -25,6 +27,7 @@ export type SessionSettings = {
 };
 
 export const DEFAULT_SETTINGS: SessionSettings = {
+  childId: null,
   childName: "",
   contentType: "story",
   book: "فارسی سوم دبستان",
