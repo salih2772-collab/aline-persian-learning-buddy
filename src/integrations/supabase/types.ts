@@ -104,6 +104,8 @@ export type Database = {
         Row: {
           book: string | null
           chapter: string | null
+          character_choice: string | null
+          colour_choice: string | null
           completed_at: string | null
           content_type: string
           created_at: string
@@ -120,6 +122,8 @@ export type Database = {
         Insert: {
           book?: string | null
           chapter?: string | null
+          character_choice?: string | null
+          colour_choice?: string | null
           completed_at?: string | null
           content_type?: string
           created_at?: string
@@ -136,6 +140,8 @@ export type Database = {
         Update: {
           book?: string | null
           chapter?: string | null
+          character_choice?: string | null
+          colour_choice?: string | null
           completed_at?: string | null
           content_type?: string
           created_at?: string
