@@ -166,13 +166,13 @@ function DashboardPage() {
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
-            to="/settings"
+            to="/session"
             className="inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-accent-foreground transition-opacity hover:opacity-90"
           >
             تنظیم جلسهٔ جدید ⚙️
           </Link>
           <Link
-            to="/preferences"
+            to="/settings"
             className="inline-flex rounded-full border border-border px-5 py-2.5 text-sm font-bold transition-colors hover:bg-secondary"
           >
             تنظیمات برنامه 🎛️
