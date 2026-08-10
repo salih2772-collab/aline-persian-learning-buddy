@@ -141,6 +141,7 @@ function ChatPage() {
         const s = await startSession({
           data: {
             student_name: settings.childName,
+            child_id: settings.childId,
             content_type: settings.contentType,
             book: useBook ? settings.book : null,
             chapter: null,
