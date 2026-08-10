@@ -93,6 +93,15 @@ export const chat = createServerFn({ method: "POST" })
     const storyTold = past.some((m) => m.phase === "content" && m.sender === "aline");
     // A disclosure gets a message of its own — no story, no lesson in that turn.
     const distress = isDistressMessage(data.userMessage);
+    // Reassurance is given once per session unless a new concern comes up.
+    const pastChild = past.filter((m) => m.sender === "child");
+    const distressRepeat = pastChild.some((m) => isDistressMessage(m.text));
+    // The turn right after a disclosure stays with the child instead of
+    // jumping straight back to the lesson.
+    const lastChild = pastChild[pastChild.length - 1];
+    const distressFollowUp =
+      !distress && !!lastChild && isDistressMessage(lastChild.text);
+
 
 
 
