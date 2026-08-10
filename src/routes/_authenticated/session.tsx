@@ -12,7 +12,7 @@ import {
   type SessionSettings,
 } from "@/lib/aline";
 
-export const Route = createFileRoute("/session")({
+export const Route = createFileRoute("/_authenticated/session")({
   head: () => ({
     meta: [
       { title: "تنظیم جلسه | الین" },

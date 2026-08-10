@@ -11,7 +11,7 @@ import {
   type AppPreferences,
 } from "@/lib/preferences";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
       { title: "تنظیمات برنامه | الین" },

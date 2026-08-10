@@ -20,7 +20,7 @@ import {
   type SessionSettings,
 } from "@/lib/aline";
 
-export const Route = createFileRoute("/chat")({
+export const Route = createFileRoute("/_authenticated/chat")({
   head: () => ({
     meta: [
       { title: "گفت‌وگو با الین | داستان و درس" },
