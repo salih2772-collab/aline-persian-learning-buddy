@@ -89,38 +89,42 @@ export const getDashboardData = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
-    const byChild = <T extends { eq: (c: string, v: string) => T }>(q: T) =>
-      data.childId ? q.eq("child_id", data.childId) : q;
+    const childId = data.childId;
+
+    let moodsQuery = supabase
+      .from("sessions")
+      // mood_reason is intentionally NOT fetched: the child's own words stay private.
+      .select("id, student_name, mood_sticker, created_at")
+      .not("mood_sticker", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(8);
+    let doneQuery = supabase
+      .from("sessions")
+      .select(
+        "id, content_type, moral_topic, book, page, mood_sticker, quiz_correct, quiz_total, completed_at, created_at",
+      )
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(8);
+    let charactersQuery = supabase
+      .from("sessions")
+      .select("id, student_name, character_choice, colour_choice, created_at")
+      .not("character_choice", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    if (childId) {
+      moodsQuery = moodsQuery.eq("child_id", childId);
+      doneQuery = doneQuery.eq("child_id", childId);
+      charactersQuery = charactersQuery.eq("child_id", childId);
+    }
 
     const [{ data: moods }, { data: done }, { data: characters }] = await Promise.all([
-      byChild(
-        supabase
-          .from("sessions")
-          // mood_reason is intentionally NOT fetched: the child's own words stay private.
-          .select("id, student_name, mood_sticker, created_at")
-          .not("mood_sticker", "is", null)
-          .order("created_at", { ascending: false })
-          .limit(8) as never,
-      ) as never as { data: { id: string; student_name: string; mood_sticker: string; created_at: string }[] | null },
-      byChild(
-        supabase
-          .from("sessions")
-          .select(
-            "id, content_type, moral_topic, book, page, mood_sticker, quiz_correct, quiz_total, completed_at, created_at",
-          )
-          .eq("status", "completed")
-          .order("completed_at", { ascending: false })
-          .limit(8) as never,
-      ) as never as { data: Record<string, unknown>[] | null },
-      byChild(
-        supabase
-          .from("sessions")
-          .select("id, student_name, character_choice, colour_choice, created_at")
-          .not("character_choice", "is", null)
-          .order("created_at", { ascending: false })
-          .limit(8) as never,
-      ) as never as { data: Record<string, unknown>[] | null },
+      moodsQuery,
+      doneQuery,
+      charactersQuery,
     ]);
+
 
     let spellingQuery = supabase
       .from("spelling_errors")
