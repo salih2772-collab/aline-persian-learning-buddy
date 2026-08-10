@@ -234,13 +234,31 @@ export function stripMarkdown(text: string): string {
     .trim();
 }
 
-/** True when the child's message hints at being hurt/scared/unloved by an adult. */
-const DISTRESS_PATTERNS = [
-  "زد", "کتک", "می‌زنه", "میزنه", "دعوا", "داد زد", "ترسید", "می‌ترسم", "میترسم",
-  "دوستم ندار", "تنبیه", "فحش", "مسخره", "اذیت", "گریه",
-];
+/**
+ * True only when the child clearly describes being hurt, scared, threatened or
+ * unloved. Matching is word-bounded on purpose: a typo like «بازی کزدیم»
+ * used to match the bare substring «زد» and trigger the safety script.
+ */
+const B = "(^|[^\\p{L}\\u200c])";
+const A = "([^\\p{L}\\u200c]|$)";
+const DISTRESS_PATTERNS: RegExp[] = [
+  "کتک",
+  "منو زد|من رو زد|بهم زد|زدم?ش? ت?و ?گوش|زد تو گوشم|کتکم زد",
+  "می‌?زنه ?(منو|بهم)|منو می‌?زنه|کتکم می‌?زنه",
+  "تهدید",
+  "فحش",
+  "تنبیه(م| )",
+  "مسخره‌?ام? کرد|مسخره‌?م می‌?کن",
+  "اذیتم? (کرد|می‌?کن)",
+  "دوستم ندار|دوسم ندار",
+  "می‌?ترسم از|ازش می‌?ترسم|ترسوندم|می‌?ترسونه",
+  "داد زد سرم|سرم داد زد",
+  "غریبه|ناشناس",
+].map((p) => new RegExp(`${B}(?:${p})${A}`, "u"));
+
 export function isDistressMessage(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
-  return DISTRESS_PATTERNS.some((p) => t.includes(p));
+  return DISTRESS_PATTERNS.some((re) => re.test(t));
 }
+
