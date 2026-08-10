@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { extractBook } from "@/lib/aline.functions";
+import { createTextbookUploadUrl, getBookStats, saveBookOffset } from "@/lib/data.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { BOOKS, toEn, toFa } from "@/lib/aline";
 
@@ -18,19 +19,15 @@ export function BookUploader({ book: initialBook }: { book: string }) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [offsets, setOffsets] = useState<Record<string, number>>({});
   const run = useServerFn(extractBook);
+  const loadStats = useServerFn(getBookStats);
+  const storeOffset = useServerFn(saveBookOffset);
+  const signUpload = useServerFn(createTextbookUploadUrl);
 
   const refresh = useCallback(async () => {
-    const [{ data }, { data: bookRows }] = await Promise.all([
-      supabase.from("book_pages").select("book"),
-      supabase.from("books").select("name, page_offset"),
-    ]);
-    const next: Record<string, number> = {};
-    for (const row of data ?? []) next[row.book] = (next[row.book] ?? 0) + 1;
-    setCounts(next);
-    const offs: Record<string, number> = {};
-    for (const row of bookRows ?? []) offs[row.name] = row.page_offset;
-    setOffsets(offs);
-  }, []);
+    const stats = await loadStats({});
+    setCounts(stats.counts);
+    setOffsets(stats.offsets);
+  }, [loadStats]);
 
   useEffect(() => {
     void refresh();
@@ -42,10 +39,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
 
   async function saveOffset() {
     const value = Number(toEn(offset)) || 0;
-    const { error: offErr } = await supabase
-      .from("books")
-      .upsert({ name: book, page_offset: value }, { onConflict: "name" });
-    if (offErr) throw new Error(offErr.message);
+    await storeOffset({ data: { book, offset: value } });
   }
 
   async function upload(e: React.FormEvent) {
@@ -56,11 +50,11 @@ export function BookUploader({ book: initialBook }: { book: string }) {
     setError(null);
     try {
       await saveOffset();
-      const path = `${Date.now()}-${encodeURIComponent(file.name)}`;
-      const { error: upErr } = await supabase.storage.from("textbooks").upload(path, file, {
-        contentType: "application/pdf",
-      });
-      if (upErr) throw new Error(upErr.message);
+      const { path, token } = await signUpload({ data: { fileName: file.name } });
+      const { error: upErr } = await supabase.storage
+        .from("textbooks")
+        .uploadToSignedUrl(path, token, file, { contentType: "application/pdf" });
+      if (upErr) throw new Error("بارگذاری فایل ناموفق بود.");
       const result = await run({ data: { path, book } });
       setStatus(`کتاب ${book} بارگذاری شد — ${toFa(result.pages)} صفحه استخراج شد`);
       setFile(null);
@@ -71,6 +65,7 @@ export function BookUploader({ book: initialBook }: { book: string }) {
       setBusy(false);
     }
   }
+
 
 
   return (
