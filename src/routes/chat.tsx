@@ -163,8 +163,13 @@ function ChatPage() {
   }
 
   /** Builds the end-of-session quiz; falls back to the closing screen if it fails. */
-  async function startQuiz(id: string) {
+  async function startQuiz(id: string, skipQuiz = false) {
     runBatchedSpellingCheck(id);
+    if (skipQuiz) {
+      await endSession({ data: { sessionId: id, correct: null, total: null } }).catch(() => {});
+      setStage("done");
+      return;
+    }
     setThinking(true);
     try {
       const quiz = await makeQuiz({ data: { sessionId: id } });
@@ -179,6 +184,7 @@ function ChatPage() {
       setThinking(false);
     }
   }
+
 
   /** "تمام شد" — the child can end the session at any moment. */
   async function finishNow() {
