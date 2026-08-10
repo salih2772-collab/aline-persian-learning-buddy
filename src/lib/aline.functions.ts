@@ -10,6 +10,7 @@ const CreateSessionInput = z.object({
   chapter: z.string().nullable().default(null),
   page: z.string().nullable().default(null),
   moral_topic: z.string().nullable().default(null),
+  child_id: z.string().uuid().nullable().default(null),
 });
 
 const CharacterInput = z.object({
@@ -38,7 +39,7 @@ export const createSession = createServerFn({ method: "POST" })
     const supabase = context.supabase;
     const { data: row, error } = await supabase
       .from("sessions")
-      .insert({ ...data, status: "active" })
+      .insert({ ...data, status: "active", parent_id: context.userId })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -70,13 +71,12 @@ export const chat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ChatInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { createServerSupabase } = await import("./supabase.server");
     const { buildSystemPrompt, nextPhase, compactHistory, stripMarkdown, isDistressMessage } =
       await import("./aline-prompt.server");
 
     const { loadPageContent } = await import("./book-page.server");
     const { callAi } = await import("./ai-model.server");
-    const supabase = createServerSupabase();
+    const supabase = context.supabase;
 
     const { data: session, error: sErr } = await supabase
       .from("sessions")
@@ -154,6 +154,7 @@ export const chat = createServerFn({ method: "POST" })
 
     if (data.userMessage.trim()) {
       await supabase.from("messages").insert({
+        parent_id: context.userId,
         session_id: data.sessionId,
         sender: "child",
         phase,
@@ -233,6 +234,7 @@ export const chat = createServerFn({ method: "POST" })
 
 
     await supabase.from("messages").insert({
+      parent_id: context.userId,
       session_id: data.sessionId,
       sender: "aline",
       phase,
@@ -284,10 +286,9 @@ export const generateQuiz = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => QuizInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { createServerSupabase } = await import("./supabase.server");
     const { buildQuizPrompt } = await import("./aline-prompt.server");
     const { loadPageContent } = await import("./book-page.server");
-    const supabase = createServerSupabase();
+    const supabase = context.supabase;
 
     const { data: session } = await supabase
       .from("sessions")
@@ -378,8 +379,11 @@ const ExtractBookInput = z.object({
 export const extractBook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ExtractBookInput.parse(input))
-  .handler(async ({ data, context }) => {
-    const supabase = context.supabase;
+  .handler(async ({ data }) => {
+    // National textbooks are shared for every parent, so extraction runs with the
+    // trusted server client (the bucket and book_pages writes are server-only).
+    const { createServerSupabase } = await import("./supabase.server");
+    const supabase = createServerSupabase();
 
     const { data: file, error } = await supabase.storage.from("textbooks").download(data.path);
     if (error || !file) throw new Error(error?.message ?? "فایل پیدا نشد.");
