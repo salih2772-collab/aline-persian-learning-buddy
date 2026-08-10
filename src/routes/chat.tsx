@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import alineMascot from "@/assets/aline.png";
 import { AlineHeader } from "@/components/aline-header";
 import { QuizCard } from "@/components/quiz-card";
-import { chat, completeSession, createSession, generateQuiz } from "@/lib/aline.functions";
+import { chat, completeSession, createSession, generateQuiz, saveCharacterChoice } from "@/lib/aline.functions";
+import { CharacterAvatar, type CharacterId, type ColourId } from "@/components/character-avatar";
+import { CharacterPicker } from "@/components/character-picker";
 import { analyzeSpelling } from "@/lib/spelling.functions";
 
 import {
@@ -34,7 +36,7 @@ export const Route = createFileRoute("/chat")({
 });
 
 type Msg = { id: number; from: "aline" | "child"; text: string };
-type Stage = "start" | "mood" | "moodReason" | "talk" | "quiz" | "free" | "done";
+type Stage = "start" | "character" | "mood" | "moodReason" | "talk" | "quiz" | "free" | "done";
 
 let msgId = 0;
 const nextId = () => ++msgId;
@@ -55,6 +57,8 @@ function ChatPage() {
     mood: Mood;
   } | null>(null);
   const [mood, setMood] = useState<Mood | null>(null);
+  const [character, setCharacter] = useState<CharacterId | null>(null);
+  const [colour, setColour] = useState<ColourId | null>(null);
   const [result, setResult] = useState<{ correct: number; total: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +67,7 @@ function ChatPage() {
   const makeQuiz = useServerFn(generateQuiz);
   const endSession = useServerFn(completeSession);
   const checkSpelling = useServerFn(analyzeSpelling);
+  const saveCharacter = useServerFn(saveCharacterChoice);
 
   // Child messages are collected during the session and analysed once at the end
   // (one API call per session instead of one per message). Never shown to the child.
@@ -148,8 +153,17 @@ function ChatPage() {
         setThinking(false);
       }
       const reply = await talk(id, "سلام الین!");
-      if (reply.phase) setStage("mood");
+      if (reply.phase) setStage("character");
     });
+  }
+
+  function chooseCharacter(c: CharacterId, col: ColourId) {
+    setCharacter(c);
+    setColour(col);
+    setStage("mood");
+    if (sessionId) {
+      void saveCharacter({ data: { sessionId, character_choice: c, colour_choice: col } }).catch(() => {});
+    }
   }
 
   async function pickMood(mood: Mood) {
@@ -265,10 +279,10 @@ function ChatPage() {
           ) : null}
 
           {messages.map((m) => (
-            <Bubble key={m.id} msg={m} />
+            <Bubble key={m.id} msg={m} character={character} colour={colour} />
           ))}
 
-          {thinking ? <Thinking /> : null}
+          {thinking ? <Thinking character={character} colour={colour} /> : null}
 
           {error ? (
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -288,6 +302,10 @@ function ChatPage() {
 
           <div ref={bottomRef} />
         </div>
+
+        {stage === "character" && !thinking ? (
+          <CharacterPicker onDone={chooseCharacter} onSkip={() => setStage("mood")} />
+        ) : null}
 
         {stage === "mood" && !thinking ? (
           <div className="card-soft mt-4 p-4">
@@ -366,12 +384,27 @@ function ChatPage() {
   );
 }
 
-function Bubble({ msg }: { msg: Msg }) {
+function AlineAvatar({ character, colour }: { character: CharacterId | null; colour: ColourId | null }) {
+  if (character) {
+    return <CharacterAvatar character={character} colour={colour} className="h-8 w-8 shrink-0" />;
+  }
+  return <img src={alineMascot} alt="" width={512} height={512} loading="lazy" className="h-8 w-8 shrink-0" />;
+}
+
+function Bubble({
+  msg,
+  character,
+  colour,
+}: {
+  msg: Msg;
+  character: CharacterId | null;
+  colour: ColourId | null;
+}) {
   const isChild = msg.from === "child";
   return (
     <div className={`flex items-end gap-2 ${isChild ? "flex-row-reverse" : ""}`}>
       {!isChild ? (
-        <img src={alineMascot} alt="" width={512} height={512} loading="lazy" className="h-8 w-8 shrink-0" />
+        <AlineAvatar character={character} colour={colour} />
       ) : (
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary text-base">🧒</span>
       )}
@@ -388,10 +421,10 @@ function Bubble({ msg }: { msg: Msg }) {
   );
 }
 
-function Thinking() {
+function Thinking({ character, colour }: { character: CharacterId | null; colour: ColourId | null }) {
   return (
     <div className="flex items-end gap-2">
-      <img src={alineMascot} alt="" width={512} height={512} loading="lazy" className="h-8 w-8 shrink-0" />
+      <AlineAvatar character={character} colour={colour} />
       <div className="flex items-center gap-2 rounded-3xl rounded-br-md border border-border bg-bubble-aline px-4 py-3 text-sm text-muted-foreground shadow-soft">
         <span className="thinking-dot h-2 w-2 rounded-full bg-primary" />
         <span className="thinking-dot h-2 w-2 rounded-full bg-primary [animation-delay:0.15s]" />
