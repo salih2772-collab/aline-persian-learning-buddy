@@ -163,8 +163,13 @@ function ChatPage() {
   }
 
   /** Builds the end-of-session quiz; falls back to the closing screen if it fails. */
-  async function startQuiz(id: string) {
+  async function startQuiz(id: string, skipQuiz = false) {
     runBatchedSpellingCheck(id);
+    if (skipQuiz) {
+      await endSession({ data: { sessionId: id, correct: null, total: null } }).catch(() => {});
+      setStage("done");
+      return;
+    }
     setThinking(true);
     try {
       const quiz = await makeQuiz({ data: { sessionId: id } });
@@ -180,15 +185,17 @@ function ChatPage() {
     }
   }
 
+
   /** "تمام شد" — the child can end the session at any moment. */
   async function finishNow() {
     if (!sessionId || thinking) return;
     push("child", "تمام شد ✋");
     await run(async () => {
-      await talk(sessionId, "دیگه کافیه، تمام شد.", null, null, true);
-      await startQuiz(sessionId);
+      const reply = await talk(sessionId, "دیگه کافیه، تمام شد.", null, null, true);
+      await startQuiz(sessionId, reply.skipQuiz);
     });
   }
+
 
   async function sendFree(e: React.FormEvent) {
     e.preventDefault();
@@ -208,7 +215,8 @@ function ChatPage() {
       }
 
       const reply = await talk(sessionId, text);
-      if (reply.wrapUp) await startQuiz(sessionId);
+      if (reply.wrapUp) await startQuiz(sessionId, reply.skipQuiz);
+
     });
   }
 

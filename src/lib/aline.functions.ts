@@ -74,37 +74,43 @@ export const chat = createServerFn({ method: "POST" })
     const lastAline = [...past].reverse().find((m) => m.sender === "aline");
     const phase: Phase = !lastAline ? "greeting" : nextPhase(lastAline.phase as Phase);
 
+    // A disclosure gets a message of its own — no story, no lesson in that turn.
+    const distress = isDistressMessage(data.userMessage);
+    // Reassurance is given once per session unless a new concern comes up.
+    const pastChild = past.filter((m) => m.sender === "child");
+    const distressRepeat = pastChild.some((m) => isDistressMessage(m.text));
+    // Once a child discloses being hurt or scared, teaching is abandoned for the
+    // rest of the session — not postponed a few turns.
+    const harmMode = distress || distressRepeat;
+    // Turns spent supporting the child since the disclosure.
+    const alineSinceDisclosure = (() => {
+      const idx = past.findIndex((m) => m.sender === "child" && isDistressMessage(m.text));
+      if (idx < 0) return 0;
+      return past.slice(idx).filter((m) => m.sender === "aline").length;
+    })();
+    const distressFollowUp = harmMode && !distress;
+
     // Decide whether this reply should end the session instead of asking again.
     // Counts this turn too. Note: the first content-phase child message is still
     // an answer to the day_check question, so the real teaching exchanges start
-    // one turn later — hence the higher threshold.
+    // one turn later.
     const contentTurns =
       past.filter((m) => m.phase === "content" && m.sender === "child").length +
       (phase === "content" && data.userMessage.trim() ? 1 : 0);
     const shortNow = data.userMessage.trim().length <= 6;
     const wrapUp =
       data.finish ||
+      // After a disclosure: stay supportive for a couple of turns, then end gently.
+      (harmMode && !distress && alineSinceDisclosure >= 2) ||
       (phase === "content" &&
-        !isDistressMessage(data.userMessage) &&
-        (wantsToStop(data.userMessage) || (contentTurns >= 9 && !shortNow)));
+        !harmMode &&
+        (wantsToStop(data.userMessage) ||
+          contentTurns >= 9 ||
+          (contentTurns >= 7 && !shortNow)));
 
     const shortAnswer = phase === "content" && !wrapUp && shortNow;
     // The single story of the session is told in the first content reply only.
     const storyTold = past.some((m) => m.phase === "content" && m.sender === "aline");
-    // A disclosure gets a message of its own — no story, no lesson in that turn.
-    const distress = isDistressMessage(data.userMessage);
-    // Reassurance is given once per session unless a new concern comes up.
-    const pastChild = past.filter((m) => m.sender === "child");
-    const distressRepeat = pastChild.some((m) => isDistressMessage(m.text));
-    // The turn right after a disclosure stays with the child instead of
-    // jumping straight back to the lesson.
-    const lastChild = pastChild[pastChild.length - 1];
-    const distressFollowUp =
-      !distress && !!lastChild && isDistressMessage(lastChild.text);
-
-
-
-
 
     // Save the mood sticker and the reason the child gave for it.
     const moodUpdate: { mood_sticker?: string; mood_reason?: string } = {};
@@ -116,11 +122,13 @@ export const chat = createServerFn({ method: "POST" })
     }
 
     // Load the configured page of the configured book (printed page + book offset).
-    // Only the teaching turn needs it — greeting/day_check and the wrap-up don't.
+    // Only the teaching turn needs it — greeting/day_check, wrap-up and any turn
+    // after a harm disclosure don't.
     let pageContent: string | null = null;
-    if (phase === "content" && !wrapUp && !distress && !distressFollowUp && session.book && session.page) {
+    if (phase === "content" && !wrapUp && !harmMode && session.book && session.page) {
       pageContent = await loadPageContent(supabase, session.book, session.page);
     }
+
 
 
     if (data.userMessage.trim()) {
@@ -146,7 +154,9 @@ export const chat = createServerFn({ method: "POST" })
           distress,
           distressRepeat,
           distressFollowUp,
+          harmMode,
         ),
+
 
       },
       ...compactHistory(past),
@@ -215,7 +225,9 @@ export const chat = createServerFn({ method: "POST" })
         .eq("id", data.sessionId);
     }
 
-    return { phase, message, question, wrapUp };
+    // After a harm disclosure the session ends gently, with no quiz.
+    return { phase, message, question, wrapUp, skipQuiz: harmMode };
+
   });
 
 const CompleteSessionInput = z.object({
