@@ -11,6 +11,24 @@ const CreateSessionInput = z.object({
   moral_topic: z.string().nullable().default(null),
 });
 
+const CharacterInput = z.object({
+  sessionId: z.string().uuid(),
+  character_choice: z.string().max(40).nullable().default(null),
+  colour_choice: z.string().max(40).nullable().default(null),
+});
+
+/** Stores the child's play choices for this session. Purely a record. */
+export const saveCharacterChoice = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => CharacterInput.parse(input))
+  .handler(async ({ data }) => {
+    const { createServerSupabase } = await import("./supabase.server");
+    const supabase = createServerSupabase();
+    const { sessionId, ...fields } = data;
+    const { error } = await supabase.from("sessions").update(fields).eq("id", sessionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+});
+
 export const createSession = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateSessionInput.parse(input))
   .handler(async ({ data }) => {
