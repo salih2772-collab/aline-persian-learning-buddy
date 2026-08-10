@@ -118,7 +118,7 @@ export const chat = createServerFn({ method: "POST" })
     // Load the configured page of the configured book (printed page + book offset).
     // Only the teaching turn needs it — greeting/day_check and the wrap-up don't.
     let pageContent: string | null = null;
-    if (phase === "content" && !wrapUp && !distress && session.book && session.page) {
+    if (phase === "content" && !wrapUp && !distress && !distressFollowUp && session.book && session.page) {
       pageContent = await loadPageContent(supabase, session.book, session.page);
     }
 
@@ -144,6 +144,8 @@ export const chat = createServerFn({ method: "POST" })
           shortAnswer,
           storyTold,
           distress,
+          distressRepeat,
+          distressFollowUp,
         ),
 
       },
