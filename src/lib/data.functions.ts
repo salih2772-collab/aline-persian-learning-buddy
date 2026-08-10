@@ -77,7 +77,7 @@ export const getPagePreview = createServerFn({ method: "POST" })
 export const getDashboardData = createServerFn({ method: "GET" }).handler(async () => {
   const { createServerSupabase } = await import("./supabase.server");
   const supabase = createServerSupabase();
-  const [{ data: moods }, { data: done }, { data: spelling }] = await Promise.all([
+  const [{ data: moods }, { data: done }, { data: spelling }, { data: characters }] = await Promise.all([
     supabase
       .from("sessions")
       // mood_reason is intentionally NOT fetched: the child's own words stay private.
@@ -98,6 +98,17 @@ export const getDashboardData = createServerFn({ method: "GET" }).handler(async 
       .select("id, child_name, written_form, correct_form, error_type, created_at")
       .order("created_at", { ascending: false })
       .limit(60),
+    supabase
+      .from("sessions")
+      .select("id, student_name, character_choice, colour_choice, created_at")
+      .not("character_choice", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(8),
   ]);
-  return { moods: moods ?? [], done: done ?? [], spelling: spelling ?? [] };
+  return {
+    moods: moods ?? [],
+    done: done ?? [],
+    spelling: spelling ?? [],
+    characters: characters ?? [],
+  };
 });
