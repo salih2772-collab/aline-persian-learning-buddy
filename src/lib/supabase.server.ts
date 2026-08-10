@@ -1,21 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-// Server-side client using the publishable key (RLS applies as anon).
-export function createServerSupabase() {
-  const url = process.env["SUPABASE_URL"]!;
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const headers = new Headers(init?.headers);
-        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) {
-          headers.delete("Authorization");
-        }
-        headers.set("apikey", key);
-        return fetch(input, { ...init, headers });
-      },
-    },
-  });
+/**
+ * Server-side Supabase client.
+ *
+ * All app tables are locked down (no anon/authenticated grants or policies), so
+ * every read/write goes through trusted server code using the service role.
+ * Never import this from client-reachable module scope.
+ */
+export function createServerSupabase(): SupabaseClient<Database> {
+  return supabaseAdmin as unknown as SupabaseClient<Database>;
 }
