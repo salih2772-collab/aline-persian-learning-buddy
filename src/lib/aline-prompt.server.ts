@@ -143,14 +143,14 @@ export function buildSystemPrompt(
             'مقدار "question" یک سؤال کوتاه دربارهٔ حال خودش باشد. فقط اگر نشان داد حالش خوب است، در پیام بعدی به درس برگرد.',
           ].join(" ")
         : wrapUp
+          ? [
+              "مرحلهٔ فعلی: «پایان جلسه». هیچ سؤال جدیدی نپرس.",
+              "در دو سه جملهٔ گرم جمع‌بندی کن که امروز چه کار کردیم، تشویق کن و خداحافظی کن.",
+              'مقدار "question" را حتماً "" بگذار.',
+            ].join(" ")
+          : phaseGuide[phase],
+    (distress || distressFollowUp) && !wrapUp ? "" : coherenceRules,
 
-        ? [
-            "مرحلهٔ فعلی: «پایان جلسه». هیچ سؤال جدیدی نپرس.",
-            "در دو سه جملهٔ گرم جمع‌بندی کن که امروز چه کار کردیم، تشویق کن و خداحافظی کن.",
-            'مقدار "question" را حتماً "" بگذار.',
-          ].join(" ")
-        : phaseGuide[phase],
-    distress && !wrapUp ? "" : coherenceRules,
     noRepeat,
     accuracyRule,
     shortAnswerRule,
